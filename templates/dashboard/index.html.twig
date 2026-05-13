@@ -1,0 +1,55 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Панель управления{% endblock %}
+
+{% block body %}
+  <div class="topline">
+    <div>
+      <h1>Панель управления</h1>
+      <div class="muted">Оперативное состояние заказов и склада</div>
+    </div>
+    <a class="btn" href="{{ path('orders_index') }}">Открыть заказы</a>
+  </div>
+
+  <section class="grid stats">
+    <div class="card stat"><div class="muted">Всего заказов</div><div class="value">{{ summary.orders_total }}</div></div>
+    <div class="card stat"><div class="muted">Активные заказы</div><div class="value">{{ summary.active_orders }}</div></div>
+    <div class="card stat"><div class="muted">Выручка</div><div class="value">{{ summary.revenue|number_format(0, ',', ' ') }} руб.</div></div>
+    <div class="card stat"><div class="muted">Низкие остатки</div><div class="value">{{ summary.low_stock }}</div></div>
+  </section>
+
+  <section class="grid two" style="margin-top:16px">
+    <div class="card">
+      <h2>Ближайшие мероприятия</h2>
+      <table>
+        <thead><tr><th>Дата</th><th>Клиент</th><th>Тип</th><th>Статус</th><th>Стоимость</th></tr></thead>
+        <tbody>
+        {% for order in upcoming %}
+          <tr>
+            <td>{{ order.event_date }}</td>
+            <td>{{ order.client_full_name }}</td>
+            <td>{{ order.event_type }}</td>
+            <td><span class="pill warn">{{ order.status }}</span></td>
+            <td>{{ order.rental_cost|number_format(2, ',', ' ') }} руб.</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="muted">Активных мероприятий пока нет</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Журнал операций</h2>
+      <table>
+        <thead><tr><th>Время</th><th>Операция</th><th>Описание</th></tr></thead>
+        <tbody>
+        {% for log in logs %}
+          <tr><td>{{ log.operation_date }}</td><td>{{ log.operation_type }}</td><td>{{ log.description }}</td></tr>
+        {% else %}
+          <tr><td colspan="3" class="muted">Журнал заполнится после изменений</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

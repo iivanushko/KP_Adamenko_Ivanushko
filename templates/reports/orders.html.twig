@@ -1,0 +1,106 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Отчет по заказам{% endblock %}
+
+{% block body %}
+  <div class="topline">
+    <div>
+      <h1>Отчет по заказам</h1>
+      <div class="muted">Отбор по периоду, статусу и типу мероприятия</div>
+    </div>
+    <div class="table-actions">
+      <a class="btn secondary" href="{{ path('reports_orders', filters|merge({format: 'pdf'})) }}">PDF</a>
+      <a class="btn secondary" href="{{ path('reports_orders', filters|merge({format: 'xlsx'})) }}">Excel</a>
+    </div>
+  </div>
+
+  <form class="toolbar" method="get">
+    <label>С даты <input type="date" name="date_from" value="{{ filters.date_from }}"></label>
+    <label>По дату <input type="date" name="date_to" value="{{ filters.date_to }}"></label>
+    <label>Статус
+      <select name="status">
+        <option value="">Все</option>
+        {% for status in statuses %}
+          <option value="{{ status }}" {% if filters.status == status %}selected{% endif %}>{{ status }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Тип мероприятия
+      <select name="event_type">
+        <option value="">Все</option>
+        {% for type in event_types %}
+          <option value="{{ type }}" {% if filters.event_type == type %}selected{% endif %}>{{ type }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn" type="submit">Сформировать</button>
+  </form>
+
+  <section class="grid stats">
+    <div class="card stat"><div class="muted">Заказов</div><div class="value">{{ report.total_count }}</div></div>
+    <div class="card stat"><div class="muted">Стоимость</div><div class="value">{{ report.total_revenue|number_format(0, ',', ' ') }} руб.</div></div>
+    <div class="card stat"><div class="muted">Предоплата</div><div class="value">{{ report.total_prepayment|number_format(0, ',', ' ') }} руб.</div></div>
+    <div class="card stat"><div class="muted">К оплате</div><div class="value">{{ (report.total_revenue - report.total_prepayment)|number_format(0, ',', ' ') }} руб.</div></div>
+  </section>
+
+  <section class="grid two" style="margin-top:16px">
+    <div class="card">
+      <h2>Выручка по типам мероприятий</h2>
+      <table>
+        <thead><tr><th>Тип</th><th>Заказов</th><th>Выручка</th><th>Диаграмма</th></tr></thead>
+        <tbody>
+        {% for row in report.by_type %}
+          <tr>
+            <td>{{ row.event_type }}</td>
+            <td>{{ row.orders_count }}</td>
+            <td>{{ row.revenue|number_format(2, ',', ' ') }} руб.</td>
+            <td><div class="bar"><span style="width: {{ row.revenue / report.max_type_revenue * 100 }}%"></span></div></td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="muted">Нет данных для диаграммы</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Параметры отчета</h2>
+      <p><strong>Период:</strong> {{ filters.date_from }} — {{ filters.date_to }}</p>
+      <p><strong>Статус:</strong> {{ filters.status ?: 'Все' }}</p>
+      <p><strong>Тип:</strong> {{ filters.event_type ?: 'Все' }}</p>
+    </div>
+  </section>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Заказы за период</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Дата</th>
+          <th>Клиент</th>
+          <th>Менеджер</th>
+          <th>Тип</th>
+          <th>Статус</th>
+          <th>Стоимость</th>
+          <th>Предоплата</th>
+          <th>Оплата</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for order in report.orders %}
+        <tr>
+          <td>{{ order.event_date }}</td>
+          <td>{{ order.client_full_name }}</td>
+          <td>{{ order.manager_full_name }}</td>
+          <td>{{ order.event_type }}</td>
+          <td>{{ order.status }}</td>
+          <td>{{ order.rental_cost|number_format(2, ',', ' ') }} руб.</td>
+          <td>{{ order.prepayment_amount|number_format(2, ',', ' ') }} руб.</td>
+          <td>{% if order.is_fully_paid %}Полная{% else %}Частичная{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="muted">За выбранный период заказов нет</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

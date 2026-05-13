@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #172033; }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    h2 { margin: 16px 0 8px; font-size: 15px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; }
+    th { background: #eef2f7; }
+    .summary { display: table; width: 100%; margin: 10px 0; }
+    .summary div { display: table-cell; border: 1px solid #cbd5e1; padding: 8px; }
+    .bar { height: 16px; background: #e2e8f0; }
+    .bar span { display: block; height: 16px; background: #0f766e; }
+  </style>
+</head>
+<body>
+  <h1>Отчет по заказам</h1>
+  <p>Период: {{ filters.date_from }} — {{ filters.date_to }}. Статус: {{ filters.status ?: 'Все' }}. Тип: {{ filters.event_type ?: 'Все' }}.</p>
+  <div class="summary">
+    <div>Заказов: <strong>{{ report.total_count }}</strong></div>
+    <div>Стоимость: <strong>{{ report.total_revenue|number_format(2, ',', ' ') }} руб.</strong></div>
+    <div>Предоплата: <strong>{{ report.total_prepayment|number_format(2, ',', ' ') }} руб.</strong></div>
+    <div>К оплате: <strong>{{ (report.total_revenue - report.total_prepayment)|number_format(2, ',', ' ') }} руб.</strong></div>
+  </div>
+
+  <h2>Выручка по типам мероприятий</h2>
+  <table>
+    <thead><tr><th>Тип</th><th>Заказов</th><th>Выручка</th><th>Диаграмма</th></tr></thead>
+    <tbody>
+    {% for row in report.by_type %}
+      <tr>
+        <td>{{ row.event_type }}</td>
+        <td>{{ row.orders_count }}</td>
+        <td>{{ row.revenue|number_format(2, ',', ' ') }} руб.</td>
+        <td><div class="bar"><span style="width: {{ row.revenue / report.max_type_revenue * 100 }}%"></span></div></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Детализация заказов</h2>
+  <table>
+    <thead><tr><th>Дата</th><th>Клиент</th><th>Менеджер</th><th>Тип</th><th>Статус</th><th>Стоимость</th><th>Предоплата</th></tr></thead>
+    <tbody>
+    {% for order in report.orders %}
+      <tr>
+        <td>{{ order.event_date }}</td>
+        <td>{{ order.client_full_name }}</td>
+        <td>{{ order.manager_full_name }}</td>
+        <td>{{ order.event_type }}</td>
+        <td>{{ order.status }}</td>
+        <td>{{ order.rental_cost|number_format(2, ',', ' ') }}</td>
+        <td>{{ order.prepayment_amount|number_format(2, ',', ' ') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
