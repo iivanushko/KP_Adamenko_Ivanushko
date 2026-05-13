@@ -15,7 +15,14 @@ docker compose up -d --build
 http://localhost:8080
 ```
 
+pgAdmin для просмотра базы откроется по адресу:
+
+```text
+http://localhost:5050
+```
+
 PostgreSQL доступен на `localhost:5432`, база `course_db`, пользователь `course_user`, пароль `course_password`.
+В pgAdmin сервер `Course PostgreSQL` уже добавлен. Если попросит пароль от базы, введите `course_password`.
 
 ## Если нужно пересоздать базу
 
