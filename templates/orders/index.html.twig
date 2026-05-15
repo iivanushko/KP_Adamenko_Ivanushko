@@ -56,7 +56,26 @@
         <td>{{ order.event_date }}<br><span class="muted">{{ order.event_type }}</span></td>
         <td>{{ order.client_full_name }}<br><span class="muted">{{ order.phone_number }}</span></td>
         <td>{{ order.manager_full_name }}</td>
-        <td>{{ order.dishes }}</td>
+        <td>
+          <details>
+            <summary>{{ order.dishes }}</summary>
+            <table style="margin-top:8px">
+              <thead><tr><th>Блюдо</th><th>Порций</th><th>Цена</th><th>Сумма</th></tr></thead>
+              <tbody>
+              {% for detail in order_details[order.order_id] ?? [] %}
+                <tr>
+                  <td>{{ detail.dish_name }}</td>
+                  <td>{{ detail.serving_number|number_format(0, ',', ' ') }}</td>
+                  <td>{{ detail.sale_price|number_format(2, ',', ' ') }} руб.</td>
+                  <td>{{ detail.line_total|number_format(2, ',', ' ') }} руб.</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="4" class="muted">Детализация не найдена</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </details>
+        </td>
         <td>{{ order.rental_cost|number_format(2, ',', ' ') }} руб.<br>
           {% if order.is_fully_paid %}<span class="pill ok" title="Рассчитывается автоматически по предоплате и стоимости заказа">Оплачен</span>{% else %}<span class="pill warn" title="Рассчитывается автоматически по предоплате и стоимости заказа">Ожидает оплаты</span>{% endif %}
         </td>
@@ -186,6 +205,7 @@
                 {% endfor %}
               </select>
               <input name="quantity[]" type="number" min="1" step="1" value="1" required>
+              <button class="btn secondary" type="button" onclick="removeLine(this)">Удалить</button>
             </div>
           </div>
         </div>
@@ -205,6 +225,7 @@
         {% endfor %}
       </select>
       <input name="quantity[]" type="number" min="1" step="1" value="1" required>
+      <button class="btn secondary" type="button" onclick="removeLine(this)">Удалить</button>
     </div>
   </template>
 {% endblock %}

@@ -15,6 +15,7 @@
 </head>
 <body>
   <h1>Отчет по складу и поставкам</h1>
+  <p>Продукт: {{ filters.q ?: 'Все' }}. Остатки: {% if filters.low == '1' %}только низкие{% else %}все{% endif %}. Статус заявок: {{ filters.status ?: 'Все' }}. Период поставок: {{ filters.date_from ?: 'без ограничения' }} — {{ filters.date_to ?: 'без ограничения' }}.</p>
   <div class="summary">
     <div>Продуктов: <strong>{{ report.products_count }}</strong></div>
     <div>Низкие остатки: <strong>{{ report.low_count }}</strong></div>
@@ -23,6 +24,20 @@
   </div>
 
   <h2>Объем поставок по поставщикам</h2>
+  {% if report.by_supplier %}
+    <svg width="720" height="180" xmlns="http://www.w3.org/2000/svg">
+      <line x1="55" y1="10" x2="55" y2="145" stroke="#64748b" stroke-width="1"/>
+      <line x1="55" y1="145" x2="700" y2="145" stroke="#64748b" stroke-width="1"/>
+      {% for row in report.by_supplier %}
+        {% set barHeight = row.total_products / report.max_supplier_total * 110 %}
+        {% set x = 75 + loop.index0 * 120 %}
+        {% set y = 145 - barHeight %}
+        <rect x="{{ x }}" y="{{ y }}" width="56" height="{{ barHeight }}" fill="#0f766e"/>
+        <text x="{{ x - 12 }}" y="162" font-size="8">{{ row.supplier_name }}</text>
+        <text x="{{ x + 2 }}" y="{{ y - 4 }}" font-size="8">{{ row.total_products|number_format(0, ',', ' ') }}</text>
+      {% endfor %}
+    </svg>
+  {% endif %}
   <table>
     <thead><tr><th>Поставщик</th><th>Заявок</th><th>Количество</th><th>Диаграмма</th></tr></thead>
     <tbody>
@@ -32,11 +47,7 @@
         <td>{{ row.requests_count }}</td>
         <td>{{ row.total_products|number_format(2, ',', ' ') }}</td>
         <td>
-          {% set width = row.total_products / report.max_supplier_total * 170 %}
-          <svg width="180" height="18" xmlns="http://www.w3.org/2000/svg">
-            <rect x="0" y="2" width="170" height="14" fill="#e2e8f0"/>
-            <rect x="0" y="2" width="{{ width }}" height="14" fill="#0f766e"/>
-          </svg>
+          {{ (row.total_products / report.max_supplier_total * 100)|number_format(0, ',', ' ') }}%
         </td>
       </tr>
     {% endfor %}

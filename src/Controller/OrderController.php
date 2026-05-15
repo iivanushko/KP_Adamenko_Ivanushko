@@ -28,8 +28,11 @@ class OrderController extends AbstractController
             'direction' => (string) $request->query->get('direction', 'desc'),
         ];
 
+        $result = $orders->getOrders($filters, $page, 8);
+
         return $this->render('orders/index.html.twig', [
-            'result' => $orders->getOrders($filters, $page, 8),
+            'result' => $result,
+            'order_details' => $orders->getDetailsForOrders(array_column($result['items'], 'order_id')),
             'page' => $page,
             'filters' => $filters,
             'clients' => $orders->clients(),

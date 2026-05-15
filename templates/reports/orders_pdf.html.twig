@@ -26,6 +26,20 @@
   </div>
 
   <h2>Выручка по типам мероприятий</h2>
+  {% if report.by_type %}
+    <svg width="720" height="180" xmlns="http://www.w3.org/2000/svg">
+      <line x1="55" y1="10" x2="55" y2="145" stroke="#64748b" stroke-width="1"/>
+      <line x1="55" y1="145" x2="700" y2="145" stroke="#64748b" stroke-width="1"/>
+      {% for row in report.by_type %}
+        {% set barHeight = row.revenue / report.max_type_revenue * 110 %}
+        {% set x = 75 + loop.index0 * 110 %}
+        {% set y = 145 - barHeight %}
+        <rect x="{{ x }}" y="{{ y }}" width="52" height="{{ barHeight }}" fill="#0f766e"/>
+        <text x="{{ x - 10 }}" y="162" font-size="8">{{ row.event_type }}</text>
+        <text x="{{ x - 5 }}" y="{{ y - 4 }}" font-size="8">{{ row.revenue|number_format(0, ',', ' ') }}</text>
+      {% endfor %}
+    </svg>
+  {% endif %}
   <table>
     <thead><tr><th>Тип</th><th>Заказов</th><th>Выручка</th><th>Диаграмма</th></tr></thead>
     <tbody>
@@ -35,11 +49,7 @@
         <td>{{ row.orders_count }}</td>
         <td>{{ row.revenue|number_format(2, ',', ' ') }} руб.</td>
         <td>
-          {% set width = row.revenue / report.max_type_revenue * 170 %}
-          <svg width="180" height="18" xmlns="http://www.w3.org/2000/svg">
-            <rect x="0" y="2" width="170" height="14" fill="#e2e8f0"/>
-            <rect x="0" y="2" width="{{ width }}" height="14" fill="#0f766e"/>
-          </svg>
+          {{ (row.revenue / report.max_type_revenue * 100)|number_format(0, ',', ' ') }}%
         </td>
       </tr>
     {% endfor %}

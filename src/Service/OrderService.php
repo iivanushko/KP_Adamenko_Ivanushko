@@ -90,6 +90,31 @@ class OrderService
         );
     }
 
+    public function getDetailsForOrders(array $orderIds): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $orderIds)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT od.order_id, d.dish_name, od.serving_number, d.sale_price, od.serving_number * d.sale_price AS line_total
+             FROM order_details od
+             JOIN dish d ON d.dish_id = od.dish_id
+             WHERE od.order_id IN (:ids)
+             ORDER BY od.order_id, d.dish_name',
+            ['ids' => $ids],
+            ['ids' => \Doctrine\DBAL\ArrayParameterType::INTEGER]
+        );
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $grouped[(int) $row['order_id']][] = $row;
+        }
+
+        return $grouped;
+    }
+
     public function createComplexOrder(array $data): array
     {
         if (($data['event_date'] ?? '') < date('Y-m-d')) {
@@ -97,9 +122,14 @@ class OrderService
         }
 
         $dishes = [];
+        $seen = [];
         foreach (($data['dish_id'] ?? []) as $index => $dishId) {
             $quantity = (float) str_replace(',', '.', (string) ($data['quantity'][$index] ?? 0));
             if ((int) $dishId > 0 && $quantity > 0) {
+                if (isset($seen[(int) $dishId])) {
+                    throw new RuntimeException('Одно блюдо нельзя добавлять в заказ дважды. Объедините количество порций в одной строке.');
+                }
+                $seen[(int) $dishId] = true;
                 $dishes[] = ['dish_id' => (int) $dishId, 'quantity' => $quantity];
             }
         }

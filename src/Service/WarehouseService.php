@@ -78,14 +78,40 @@ class WarehouseService
         );
     }
 
+    public function updateRequestStatus(int $requestId, string $status): void
+    {
+        if (!in_array($status, ['В пути', 'Получено'], true)) {
+            throw new \RuntimeException('Недопустимый статус заявки поставщику.');
+        }
+
+        $this->connection->executeStatement(
+            'UPDATE supplier_request SET status = :status WHERE request_id = :id',
+            ['id' => $requestId, 'status' => $status]
+        );
+
+        $this->connection->executeStatement(
+            "SELECT log_operation('UPDATE_STATUS', 'Supplier_Request', :id, :description)",
+            ['id' => $requestId, 'description' => 'Статус заявки поставщику изменен на '.$status]
+        );
+    }
+
     public function createRequest(array $data): void
     {
         $products = [];
+        $seen = [];
         foreach (($data['product_id'] ?? []) as $index => $productId) {
             $quantity = (float) str_replace(',', '.', (string) ($data['products_number'][$index] ?? 0));
             if ((int) $productId > 0 && $quantity > 0) {
+                if (isset($seen[(int) $productId])) {
+                    throw new \RuntimeException('Один продукт нельзя добавлять в заявку дважды. Объедините количество в одной строке.');
+                }
+                $seen[(int) $productId] = true;
                 $products[] = ['product_id' => (int) $productId, 'quantity' => $quantity];
             }
+        }
+
+        if ($products === []) {
+            throw new \RuntimeException('Добавьте хотя бы один продукт в заявку поставщику.');
         }
 
         $this->connection->transactional(function () use ($data, $products): void {

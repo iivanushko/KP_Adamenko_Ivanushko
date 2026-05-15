@@ -87,7 +87,15 @@
           <td>{{ request.supplier_name }}</td>
           <td>{{ request.manager_full_name }}</td>
           <td>{{ request.products ?: 'Состав не указан' }}</td>
-          <td><span class="pill {% if request.status == 'Получено' %}ok{% else %}warn{% endif %}">{{ request.status }}</span></td>
+          <td>
+            <form class="inline-form" method="post" action="{{ path('warehouse_request_status', {id: request.request_id}) }}">
+              <select name="status" data-current="{{ request.status }}" onchange="confirmSupplyStatusChange(this)" {% if request.status == 'Получено' %}disabled{% endif %}>
+                <option value="В пути" {% if request.status == 'В пути' %}selected{% endif %}>В пути</option>
+                <option value="Получено" {% if request.status == 'Получено' %}selected{% endif %}>Получено</option>
+              </select>
+              {% if request.status == 'Получено' %}<span class="pill ok">Склад пополнен</span>{% endif %}
+            </form>
+          </td>
         </tr>
       {% else %}
         <tr><td colspan="5" class="muted">Заявки еще не создавались</td></tr>
@@ -139,6 +147,7 @@
                 {% endfor %}
               </select>
               <input name="products_number[]" type="number" min="0.01" step="0.01" value="10" required>
+              <button class="btn secondary" type="button" onclick="removeLine(this)">Удалить</button>
             </div>
           </div>
         </div>
@@ -158,6 +167,7 @@
         {% endfor %}
       </select>
       <input name="products_number[]" type="number" min="0.01" step="0.01" value="10" required>
+      <button class="btn secondary" type="button" onclick="removeLine(this)">Удалить</button>
     </div>
   </template>
 {% endblock %}

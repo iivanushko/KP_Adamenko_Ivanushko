@@ -66,4 +66,17 @@ class WarehouseController extends AbstractController
 
         return $this->redirectToRoute('warehouse_index');
     }
+
+    #[Route('/request/{id}/status', name: 'request_status', methods: ['POST'])]
+    public function updateRequestStatus(int $id, Request $request, WarehouseService $warehouse, ErrorMessageFormatter $errors): RedirectResponse
+    {
+        try {
+            $warehouse->updateRequestStatus($id, (string) $request->request->get('status'));
+            $this->addFlash('success', 'Статус заявки поставщику обновлен.');
+        } catch (Throwable $exception) {
+            $this->addFlash('danger', $errors->format($exception));
+        }
+
+        return new RedirectResponse($request->headers->get('referer') ?: $this->generateUrl('warehouse_index'));
+    }
 }

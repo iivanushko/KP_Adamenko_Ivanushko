@@ -75,7 +75,7 @@
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .wide { grid-column: 1 / -1; }
     .line-items { display: grid; gap: 8px; }
-    .line-item { display: grid; grid-template-columns: 1fr 130px; gap: 8px; }
+    .line-item { display: grid; grid-template-columns: 1fr 130px auto; gap: 8px; }
     .bar { height: 28px; background: var(--soft); border-radius: 6px; overflow: hidden; border: 1px solid #cce7e2; }
     .bar span { display: block; height: 100%; background: var(--brand); }
     .switch { display: inline-flex; width: 46px; height: 24px; position: relative; }
@@ -104,7 +104,7 @@
         <a class="{% if route starts with 'orders_' %}active{% endif %}" href="{{ path('orders_index') }}">Банкетные заказы</a>
         <a class="{% if route starts with 'clients_' %}active{% endif %}" href="{{ path('clients_index') }}">Клиенты</a>
         <a class="{% if route starts with 'menu_' %}active{% endif %}" href="{{ path('menu_index') }}">Меню/Блюда</a>
-        <a class="{% if route starts with 'references_' %}active{% endif %}" href="{{ path('references_index') }}">Справочники</a>
+        <a class="{% if route starts with 'references_' %}active{% endif %}" href="{{ path('references_index') }}">Персонал и снабжение</a>
         <a class="{% if route starts with 'warehouse_' %}active{% endif %}" href="{{ path('warehouse_index') }}">Склад и поставки</a>
         <a class="{% if route starts with 'reports_' %}active{% endif %}" href="{{ path('reports_orders') }}">Отчеты</a>
       </nav>
@@ -129,6 +129,10 @@
       const source = document.querySelector('#product-template').content.cloneNode(true);
       document.querySelector('#product-lines').appendChild(source);
     }
+    function removeLine(button) {
+      const container = button.closest('.line-items');
+      if (container && container.children.length > 1) button.closest('.line-item').remove();
+    }
     function confirmStatusChange(select) {
       if (select.value === select.dataset.current) return;
       const finalText = select.value === 'Выполнен'
@@ -139,6 +143,14 @@
       } else {
         select.value = select.dataset.current;
       }
+    }
+    function confirmSupplyStatusChange(select) {
+      if (select.value === select.dataset.current) return;
+      if (select.value === 'Получено' && !confirm('Отметить заявку как полученную и пополнить склад по ее составу?')) {
+        select.value = select.dataset.current;
+        return;
+      }
+      select.form.submit();
     }
     document.addEventListener('submit', function (event) {
       let invalid = null;

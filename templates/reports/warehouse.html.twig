@@ -15,6 +15,32 @@
     </div>
   </div>
 
+  <form class="toolbar" method="get">
+    <label>Продукт
+      <input name="q" value="{{ filters.q }}" placeholder="Название продукта">
+    </label>
+    <label>Статус заявки
+      <select name="status">
+        <option value="">Все</option>
+        <option value="В пути" {% if filters.status == 'В пути' %}selected{% endif %}>В пути</option>
+        <option value="Получено" {% if filters.status == 'Получено' %}selected{% endif %}>Получено</option>
+      </select>
+    </label>
+    <label>Поставки с <input type="date" name="date_from" value="{{ filters.date_from }}"></label>
+    <label>Поставки по <input type="date" name="date_to" value="{{ filters.date_to }}"></label>
+    <label class="checkline" style="margin-bottom:9px">
+      <input type="checkbox" name="low" value="1" {% if filters.low == '1' %}checked{% endif %}>
+      Только низкие остатки
+    </label>
+    <button class="btn" type="submit">Сформировать</button>
+    <a class="btn secondary" href="{{ path('reports_warehouse') }}">Сброс</a>
+  </form>
+
+  <div class="table-actions" style="margin-bottom:14px">
+    <a class="btn secondary" href="{{ path('reports_warehouse', filters|merge({format: 'pdf'})) }}">PDF с фильтрами</a>
+    <a class="btn secondary" href="{{ path('reports_warehouse', filters|merge({format: 'xlsx'})) }}">Excel с фильтрами</a>
+  </div>
+
   <section class="grid stats">
     <div class="card stat"><div class="muted">Продуктов</div><div class="value">{{ report.products_count }}</div></div>
     <div class="card stat"><div class="muted">Низкие остатки</div><div class="value">{{ report.low_count }}</div></div>

@@ -11,6 +11,21 @@
     <button class="btn" type="button" onclick="openModal('create-dish')">Новое блюдо</button>
   </div>
 
+  <form class="toolbar" method="get">
+    <label>Блюдо
+      <input name="q" value="{{ filters.q }}" placeholder="Название блюда">
+    </label>
+    <label>Доступность
+      <select name="active">
+        <option value="">Все</option>
+        <option value="1" {% if filters.active == '1' %}selected{% endif %}>В меню</option>
+        <option value="0" {% if filters.active == '0' %}selected{% endif %}>Скрытые</option>
+      </select>
+    </label>
+    <button class="btn" type="submit">Найти</button>
+    <a class="btn secondary" href="{{ path('menu_index') }}">Сброс</a>
+  </form>
+
   <table>
     <thead>
       <tr>
@@ -20,19 +35,27 @@
         <th>Категория</th>
         <th>Прибыль</th>
         <th>Сезонность</th>
+        <th>Рецептура</th>
         <th>В меню</th>
         <th>Действия</th>
       </tr>
     </thead>
     <tbody>
-    {% for dish in dishes %}
+    {% for dish in result.items %}
       <tr>
-        <td>{{ dish.dish_name }}</td>
-        <td>{{ dish.cost_price|number_format(2, ',', ' ') }} руб.</td>
-        <td>{{ dish.sale_price|number_format(2, ',', ' ') }} руб.</td>
+        <td>
+          <form id="dish-form-{{ dish.dish_id }}" method="post" action="{{ path('menu_edit', {id: dish.dish_id}) }}"></form>
+          <input form="dish-form-{{ dish.dish_id }}" name="dish_name" value="{{ dish.dish_name }}" maxlength="100" required>
+        </td>
+        <td><input form="dish-form-{{ dish.dish_id }}" name="cost_price" type="number" min="0" step="0.01" value="{{ dish.cost_price }}" required></td>
+        <td><input form="dish-form-{{ dish.dish_id }}" name="sale_price" type="number" min="0.01" step="0.01" value="{{ dish.sale_price }}" required></td>
         <td>{{ dish.price_category }}</td>
         <td>{{ dish.profit|number_format(2, ',', ' ') }} руб.</td>
-        <td>{{ dish.seasonality }}</td>
+        <td><input form="dish-form-{{ dish.dish_id }}" name="seasonality" value="{{ dish.seasonality }}" maxlength="50"></td>
+        <td>
+          <button class="btn secondary" type="button" onclick="openModal('recipe-{{ dish.dish_id }}')">Открыть</button>
+          <span class="muted">{{ (recipes[dish.dish_id] ?? [])|length }} поз.</span>
+        </td>
         <td>
           <form method="post" action="{{ path('menu_toggle', {id: dish.dish_id}) }}">
             <label class="switch" title="Скрытое блюдо не предлагается при создании заказа">
@@ -43,13 +66,62 @@
         </td>
         <td>
           <div class="table-actions">
-            <button class="btn secondary" type="button" onclick="openModal('edit-dish-{{ dish.dish_id }}')">Изменить</button>
+            <input form="dish-form-{{ dish.dish_id }}" type="hidden" name="is_active" value="{{ dish.is_active ? '1' : '' }}">
+            <button form="dish-form-{{ dish.dish_id }}" class="btn secondary" type="submit">Сохранить</button>
+            <button class="btn secondary" type="button" onclick="openModal('edit-dish-{{ dish.dish_id }}')">Окно</button>
             <form method="post" action="{{ path('menu_delete', {id: dish.dish_id}) }}" onsubmit="return confirm('Удалить блюдо? Связанные рецепты и строки заказов будут затронуты правилами БД.')">
               <button class="btn danger" type="submit">Удалить</button>
             </form>
           </div>
         </td>
       </tr>
+
+      <dialog id="recipe-{{ dish.dish_id }}">
+        <div class="modal-head">
+          <h2>Рецептура: {{ dish.dish_name }}</h2>
+          <button class="btn secondary" type="button" onclick="closeModal('recipe-{{ dish.dish_id }}')">Закрыть</button>
+        </div>
+        <div class="modal-body">
+          <table>
+            <thead><tr><th>Продукт</th><th>Количество на порцию</th><th>Действия</th></tr></thead>
+            <tbody>
+            {% for row in recipes[dish.dish_id] ?? [] %}
+              <tr>
+                <td>{{ row.product_name }}</td>
+                <td>
+                  <form id="recipe-form-{{ dish.dish_id }}-{{ row.product_id }}" method="post" action="{{ path('menu_recipe_save', {id: dish.dish_id}) }}"></form>
+                  <input form="recipe-form-{{ dish.dish_id }}-{{ row.product_id }}" type="hidden" name="product_id" value="{{ row.product_id }}">
+                  <input form="recipe-form-{{ dish.dish_id }}-{{ row.product_id }}" name="number_in_recipe" type="number" min="0.001" step="0.001" value="{{ row.number_in_recipe }}" required>
+                </td>
+                <td>
+                  <div class="table-actions">
+                    <button form="recipe-form-{{ dish.dish_id }}-{{ row.product_id }}" class="btn secondary" type="submit">Сохранить</button>
+                    <form method="post" action="{{ path('menu_recipe_delete', {dishId: dish.dish_id, productId: row.product_id}) }}" onsubmit="return confirm('Удалить продукт из рецептуры?')">
+                      <button class="btn danger" type="submit">Удалить</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="3" class="muted">Рецептура пока не заполнена</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+          <form class="toolbar" method="post" action="{{ path('menu_recipe_save', {id: dish.dish_id}) }}">
+            <label>Продукт
+              <select name="product_id" required>
+                {% for product in products %}
+                  <option value="{{ product.product_id }}">{{ product.product_name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>Количество на порцию
+              <input name="number_in_recipe" type="number" min="0.001" step="0.001" value="0.100" required>
+            </label>
+            <button class="btn" type="submit">Добавить/обновить</button>
+          </form>
+        </div>
+      </dialog>
 
       <dialog id="edit-dish-{{ dish.dish_id }}">
         <form method="post" action="{{ path('menu_edit', {id: dish.dish_id}) }}">
@@ -71,10 +143,20 @@
         </form>
       </dialog>
     {% else %}
-      <tr><td colspan="8" class="muted">Блюда пока не добавлены</td></tr>
+      <tr><td colspan="9" class="muted">Блюда пока не добавлены</td></tr>
     {% endfor %}
     </tbody>
   </table>
+
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="{{ path('menu_index', filters|merge({page: page - 1})) }}">Назад</a>
+    {% endif %}
+    <span>Страница {{ page }} из {{ result.pages }}</span>
+    {% if page < result.pages %}
+      <a href="{{ path('menu_index', filters|merge({page: page + 1})) }}">Вперед</a>
+    {% endif %}
+  </div>
 
   <dialog id="create-dish">
     <form method="post" action="{{ path('menu_create') }}">

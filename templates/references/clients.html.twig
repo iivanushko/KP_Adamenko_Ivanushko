@@ -11,18 +11,30 @@
     <button class="btn" type="button" onclick="openModal('create-client')">Новый клиент</button>
   </div>
 
+  <form class="toolbar" method="get">
+    <label>Клиент или телефон
+      <input name="q" value="{{ filters.q }}" placeholder="ФИО или телефон">
+    </label>
+    <button class="btn" type="submit">Найти</button>
+    <a class="btn secondary" href="{{ path('clients_index') }}">Сброс</a>
+  </form>
+
   <table>
     <thead>
       <tr><th>ФИО</th><th>Телефон</th><th>Действия</th></tr>
     </thead>
     <tbody>
-    {% for client in clients %}
+    {% for client in result.items %}
       <tr>
-        <td>{{ client.client_full_name }}</td>
-        <td>{{ client.phone_number }}</td>
+        <td>
+          <form id="client-form-{{ client.client_id }}" method="post" action="{{ path('clients_edit', {id: client.client_id}) }}"></form>
+          <input form="client-form-{{ client.client_id }}" name="client_full_name" value="{{ client.client_full_name }}" maxlength="100" required>
+        </td>
+        <td><input form="client-form-{{ client.client_id }}" name="phone_number" value="{{ client.phone_number }}" maxlength="20" pattern="[0-9]{10,15}" title="От 10 до 15 цифр" required></td>
         <td>
           <div class="table-actions">
-            <button class="btn secondary" type="button" onclick="openModal('edit-client-{{ client.client_id }}')">Изменить</button>
+            <button form="client-form-{{ client.client_id }}" class="btn secondary" type="submit">Сохранить</button>
+            <button class="btn secondary" type="button" onclick="openModal('edit-client-{{ client.client_id }}')">Окно</button>
             <form method="post" action="{{ path('clients_delete', {id: client.client_id}) }}" onsubmit="return confirm('Удалить клиента? Если у него есть заказы, удаление будет запрещено.')">
               <button class="btn danger" type="submit">Удалить</button>
             </form>
@@ -38,7 +50,7 @@
           </div>
           <div class="modal-body form-grid">
             <label>ФИО <input name="client_full_name" value="{{ client.client_full_name }}" maxlength="100" required></label>
-            <label>Телефон <input name="phone_number" value="{{ client.phone_number }}" maxlength="20" required></label>
+            <label>Телефон <input name="phone_number" value="{{ client.phone_number }}" maxlength="20" pattern="[0-9]{10,15}" title="От 10 до 15 цифр" required></label>
           </div>
           <div class="modal-foot">
             <button class="btn secondary" type="button" onclick="closeModal('edit-client-{{ client.client_id }}')">Отмена</button>
@@ -52,6 +64,16 @@
     </tbody>
   </table>
 
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="{{ path('clients_index', filters|merge({page: page - 1})) }}">Назад</a>
+    {% endif %}
+    <span>Страница {{ page }} из {{ result.pages }}</span>
+    {% if page < result.pages %}
+      <a href="{{ path('clients_index', filters|merge({page: page + 1})) }}">Вперед</a>
+    {% endif %}
+  </div>
+
   <dialog id="create-client">
     <form method="post" action="{{ path('clients_create') }}">
       <div class="modal-head">
@@ -60,7 +82,7 @@
       </div>
       <div class="modal-body form-grid">
         <label>ФИО <input name="client_full_name" maxlength="100" required></label>
-        <label>Телефон <input name="phone_number" maxlength="20" required></label>
+        <label>Телефон <input name="phone_number" maxlength="20" pattern="[0-9]{10,15}" title="От 10 до 15 цифр" required></label>
       </div>
       <div class="modal-foot">
         <button class="btn secondary" type="button" onclick="closeModal('create-client')">Отмена</button>

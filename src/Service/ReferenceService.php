@@ -11,15 +11,36 @@ class ReferenceService
     {
     }
 
-    public function clients(): array
+    public function clients(array $filters = [], int $page = 1, int $limit = 20): array
     {
-        return $this->connection->fetchAllAssociative('SELECT client_id, client_full_name, phone_number FROM client ORDER BY client_full_name');
+        $where = [];
+        $params = [];
+        if (($filters['q'] ?? '') !== '') {
+            $where[] = '(client_full_name ILIKE :q OR phone_number ILIKE :q)';
+            $params['q'] = '%'.$filters['q'].'%';
+        }
+
+        $whereSql = $where === [] ? '' : 'WHERE '.implode(' AND ', $where);
+        $offset = max(0, ($page - 1) * $limit);
+
+        $items = $this->connection->fetchAllAssociative(
+            "SELECT client_id, client_full_name, phone_number
+             FROM client
+             $whereSql
+             ORDER BY client_full_name
+             LIMIT $limit OFFSET $offset",
+            $params
+        );
+        $total = (int) $this->connection->fetchOne("SELECT COUNT(*) FROM client $whereSql", $params);
+
+        return ['items' => $items, 'total' => $total, 'pages' => max(1, (int) ceil($total / $limit))];
     }
 
     public function createClient(array $data): void
     {
         $this->requireText($data['client_full_name'] ?? '', 'Укажите ФИО клиента.');
         $this->requireText($data['phone_number'] ?? '', 'Укажите телефон клиента.');
+        $this->validatePhone((string) $data['phone_number']);
 
         $id = (int) $this->connection->fetchOne(
             'INSERT INTO client (client_full_name, phone_number) VALUES (:name, :phone) RETURNING client_id',
@@ -32,6 +53,7 @@ class ReferenceService
     {
         $this->requireText($data['client_full_name'] ?? '', 'Укажите ФИО клиента.');
         $this->requireText($data['phone_number'] ?? '', 'Укажите телефон клиента.');
+        $this->validatePhone((string) $data['phone_number']);
 
         $this->connection->executeStatement(
             'UPDATE client SET client_full_name = :name, phone_number = :phone WHERE client_id = :id',
@@ -46,13 +68,33 @@ class ReferenceService
         $this->log('DELETE', 'Client', $id, 'Удален клиент из интерфейса');
     }
 
-    public function dishes(): array
+    public function dishes(array $filters = [], int $page = 1, int $limit = 20): array
     {
-        return $this->connection->fetchAllAssociative(
-            'SELECT dish_id, dish_name, cost_price, sale_price, price_category, profit, seasonality, is_active
+        $where = [];
+        $params = [];
+        if (($filters['q'] ?? '') !== '') {
+            $where[] = 'dish_name ILIKE :q';
+            $params['q'] = '%'.$filters['q'].'%';
+        }
+        if (($filters['active'] ?? '') !== '') {
+            $where[] = 'is_active = :active';
+            $params['active'] = $filters['active'] === '1';
+        }
+
+        $whereSql = $where === [] ? '' : 'WHERE '.implode(' AND ', $where);
+        $offset = max(0, ($page - 1) * $limit);
+
+        $items = $this->connection->fetchAllAssociative(
+            "SELECT dish_id, dish_name, cost_price, sale_price, price_category, profit, seasonality, is_active
              FROM dish
-             ORDER BY is_active DESC, dish_name'
+             $whereSql
+             ORDER BY is_active DESC, dish_name
+             LIMIT $limit OFFSET $offset",
+            $params
         );
+        $total = (int) $this->connection->fetchOne("SELECT COUNT(*) FROM dish $whereSql", $params);
+
+        return ['items' => $items, 'total' => $total, 'pages' => max(1, (int) ceil($total / $limit))];
     }
 
     public function createDish(array $data): void
@@ -91,6 +133,62 @@ class ReferenceService
     {
         $this->connection->executeStatement('DELETE FROM dish WHERE dish_id = :id', ['id' => $id]);
         $this->log('DELETE', 'Dish', $id, 'Удалено блюдо из интерфейса');
+    }
+
+    public function recipeProducts(): array
+    {
+        return $this->connection->fetchAllAssociative('SELECT product_id, product_name FROM product ORDER BY product_name');
+    }
+
+    public function recipesByDish(array $dishIds): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $dishIds)));
+        if ($ids === []) {
+            return [];
+        }
+
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT r.dish_id, r.product_id, p.product_name, r.number_in_recipe
+             FROM recipe r
+             JOIN product p ON p.product_id = r.product_id
+             WHERE r.dish_id IN (:ids)
+             ORDER BY r.dish_id, p.product_name',
+            ['ids' => $ids],
+            ['ids' => \Doctrine\DBAL\ArrayParameterType::INTEGER]
+        );
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $grouped[(int) $row['dish_id']][] = $row;
+        }
+
+        return $grouped;
+    }
+
+    public function upsertRecipeItem(int $dishId, array $data): void
+    {
+        $productId = (int) ($data['product_id'] ?? 0);
+        $quantity = $this->number($data['number_in_recipe'] ?? 0);
+        if ($productId <= 0 || $quantity <= 0) {
+            throw new RuntimeException('Выберите продукт и укажите положительное количество в рецепте.');
+        }
+
+        $this->connection->executeStatement(
+            'INSERT INTO recipe (dish_id, product_id, number_in_recipe)
+             VALUES (:dish, :product, :quantity)
+             ON CONFLICT (product_id, dish_id) DO UPDATE SET number_in_recipe = EXCLUDED.number_in_recipe',
+            ['dish' => $dishId, 'product' => $productId, 'quantity' => $quantity]
+        );
+        $this->log('UPDATE', 'Recipe', $dishId, 'Обновлена рецептура блюда из интерфейса');
+    }
+
+    public function deleteRecipeItem(int $dishId, int $productId): void
+    {
+        $this->connection->executeStatement(
+            'DELETE FROM recipe WHERE dish_id = :dish AND product_id = :product',
+            ['dish' => $dishId, 'product' => $productId]
+        );
+        $this->log('DELETE', 'Recipe', $dishId, 'Удалена строка рецептуры из интерфейса');
     }
 
     public function managers(): array
@@ -218,7 +316,7 @@ class ReferenceService
             'cost' => $cost,
             'sale' => $sale,
             'seasonality' => trim((string) ($data['seasonality'] ?? 'Всесезонное')) ?: 'Всесезонное',
-            'active' => isset($data['is_active']),
+            'active' => !empty($data['is_active']),
         ];
     }
 
@@ -231,6 +329,13 @@ class ReferenceService
     {
         if (trim((string) $value) === '') {
             throw new RuntimeException($message);
+        }
+    }
+
+    private function validatePhone(string $phone): void
+    {
+        if (!preg_match('/^[0-9]{10,15}$/', $phone)) {
+            throw new RuntimeException('Телефон должен содержать от 10 до 15 цифр.');
         }
     }
 
