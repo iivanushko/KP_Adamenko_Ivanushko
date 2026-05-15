@@ -34,7 +34,13 @@
         <td>{{ row.event_type }}</td>
         <td>{{ row.orders_count }}</td>
         <td>{{ row.revenue|number_format(2, ',', ' ') }} руб.</td>
-        <td><div class="bar"><span style="width: {{ row.revenue / report.max_type_revenue * 100 }}%"></span></div></td>
+        <td>
+          {% set width = row.revenue / report.max_type_revenue * 170 %}
+          <svg width="180" height="18" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0" y="2" width="170" height="14" fill="#e2e8f0"/>
+            <rect x="0" y="2" width="{{ width }}" height="14" fill="#0f766e"/>
+          </svg>
+        </td>
       </tr>
     {% endfor %}
     </tbody>

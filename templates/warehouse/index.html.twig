@@ -26,11 +26,11 @@
   <table>
     <thead>
       <tr>
-        <th>Продукт</th>
-        <th>Остаток</th>
-        <th>Минимум</th>
-        <th>Последнее пополнение</th>
-        <th>Состояние</th>
+        <th><a class="sort-link {% if filters.sort == 'product' %}active{% endif %}" href="{{ path('warehouse_index', filters|merge({sort: 'product', direction: filters.sort == 'product' and filters.direction == 'asc' ? 'desc' : 'asc', page: 1})) }}">Продукт</a></th>
+        <th><a class="sort-link {% if filters.sort == 'quantity' %}active{% endif %}" href="{{ path('warehouse_index', filters|merge({sort: 'quantity', direction: filters.sort == 'quantity' and filters.direction == 'asc' ? 'desc' : 'asc', page: 1})) }}">Остаток</a></th>
+        <th><a class="sort-link {% if filters.sort == 'min' %}active{% endif %}" href="{{ path('warehouse_index', filters|merge({sort: 'min', direction: filters.sort == 'min' and filters.direction == 'asc' ? 'desc' : 'asc', page: 1})) }}">Минимум</a></th>
+        <th><a class="sort-link {% if filters.sort == 'restock' %}active{% endif %}" href="{{ path('warehouse_index', filters|merge({sort: 'restock', direction: filters.sort == 'restock' and filters.direction == 'asc' ? 'desc' : 'asc', page: 1})) }}">Последнее пополнение</a></th>
+        <th><a class="sort-link {% if filters.sort == 'state' %}active{% endif %}" href="{{ path('warehouse_index', filters|merge({sort: 'state', direction: filters.sort == 'state' and filters.direction == 'asc' ? 'desc' : 'asc', page: 1})) }}">Состояние</a></th>
         <th>Редактирование</th>
       </tr>
     </thead>
@@ -49,9 +49,13 @@
           {% endif %}
         </td>
         <td>
-          <form class="inline-form" method="post" action="{{ path('warehouse_stock_update', {productId: item.product_id}) }}">
-            <input name="quantity" type="number" min="0" step="0.01" value="{{ item.quantity }}">
-            <input name="min_quantity" type="number" min="0" step="0.01" value="{{ item.min_quantity }}">
+          <form class="inline-fields" method="post" action="{{ path('warehouse_stock_update', {productId: item.product_id}) }}">
+            <label>Остаток
+              <input name="quantity" type="number" min="0" step="0.01" value="{{ item.quantity }}">
+            </label>
+            <label>Минимум
+              <input name="min_quantity" type="number" min="0" step="0.01" value="{{ item.min_quantity }}">
+            </label>
             <button class="btn secondary" type="submit">OK</button>
           </form>
         </td>

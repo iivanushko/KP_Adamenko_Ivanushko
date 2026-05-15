@@ -1,0 +1,98 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Меню и блюда{% endblock %}
+
+{% block body %}
+  <div class="topline">
+    <div>
+      <h1>Меню и блюда</h1>
+      <div class="muted">Блюда для заказов, цены и доступность в меню</div>
+    </div>
+    <button class="btn" type="button" onclick="openModal('create-dish')">Новое блюдо</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Блюдо</th>
+        <th>Себестоимость</th>
+        <th>Цена</th>
+        <th>Категория</th>
+        <th>Прибыль</th>
+        <th>Сезонность</th>
+        <th>В меню</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for dish in dishes %}
+      <tr>
+        <td>{{ dish.dish_name }}</td>
+        <td>{{ dish.cost_price|number_format(2, ',', ' ') }} руб.</td>
+        <td>{{ dish.sale_price|number_format(2, ',', ' ') }} руб.</td>
+        <td>{{ dish.price_category }}</td>
+        <td>{{ dish.profit|number_format(2, ',', ' ') }} руб.</td>
+        <td>{{ dish.seasonality }}</td>
+        <td>
+          <form method="post" action="{{ path('menu_toggle', {id: dish.dish_id}) }}">
+            <label class="switch" title="Скрытое блюдо не предлагается при создании заказа">
+              <input type="checkbox" name="is_active" value="1" onchange="this.form.submit()" {% if dish.is_active %}checked{% endif %}>
+              <span></span>
+            </label>
+          </form>
+        </td>
+        <td>
+          <div class="table-actions">
+            <button class="btn secondary" type="button" onclick="openModal('edit-dish-{{ dish.dish_id }}')">Изменить</button>
+            <form method="post" action="{{ path('menu_delete', {id: dish.dish_id}) }}" onsubmit="return confirm('Удалить блюдо? Связанные рецепты и строки заказов будут затронуты правилами БД.')">
+              <button class="btn danger" type="submit">Удалить</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+
+      <dialog id="edit-dish-{{ dish.dish_id }}">
+        <form method="post" action="{{ path('menu_edit', {id: dish.dish_id}) }}">
+          <div class="modal-head">
+            <h2>Редактирование блюда</h2>
+            <button class="btn secondary" type="button" onclick="closeModal('edit-dish-{{ dish.dish_id }}')">Закрыть</button>
+          </div>
+          <div class="modal-body form-grid">
+            <label>Название <input name="dish_name" value="{{ dish.dish_name }}" maxlength="100" required></label>
+            <label>Сезонность <input name="seasonality" value="{{ dish.seasonality }}" maxlength="50"></label>
+            <label>Себестоимость <input name="cost_price" type="number" min="0" step="0.01" value="{{ dish.cost_price }}" required></label>
+            <label>Цена продажи <input name="sale_price" type="number" min="0.01" step="0.01" value="{{ dish.sale_price }}" required></label>
+            <label class="checkline wide"><input type="checkbox" name="is_active" value="1" {% if dish.is_active %}checked{% endif %}> Показывать блюдо при создании заказа</label>
+          </div>
+          <div class="modal-foot">
+            <button class="btn secondary" type="button" onclick="closeModal('edit-dish-{{ dish.dish_id }}')">Отмена</button>
+            <button class="btn" type="submit">Сохранить</button>
+          </div>
+        </form>
+      </dialog>
+    {% else %}
+      <tr><td colspan="8" class="muted">Блюда пока не добавлены</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <dialog id="create-dish">
+    <form method="post" action="{{ path('menu_create') }}">
+      <div class="modal-head">
+        <h2>Новое блюдо</h2>
+        <button class="btn secondary" type="button" onclick="closeModal('create-dish')">Закрыть</button>
+      </div>
+      <div class="modal-body form-grid">
+        <label>Название <input name="dish_name" maxlength="100" required></label>
+        <label>Сезонность <input name="seasonality" maxlength="50" value="Всесезонное"></label>
+        <label>Себестоимость <input name="cost_price" type="number" min="0" step="0.01" required></label>
+        <label>Цена продажи <input name="sale_price" type="number" min="0.01" step="0.01" required></label>
+        <label class="checkline wide"><input type="checkbox" name="is_active" value="1" checked> Показывать блюдо при создании заказа</label>
+      </div>
+      <div class="modal-foot">
+        <button class="btn secondary" type="button" onclick="closeModal('create-dish')">Отмена</button>
+        <button class="btn" type="submit">Создать</button>
+      </div>
+    </form>
+  </dialog>
+{% endblock %}

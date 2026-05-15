@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #172033; }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    h2 { margin: 16px 0 8px; font-size: 15px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; }
+    th { background: #eef2f7; }
+    .summary { display: table; width: 100%; margin: 10px 0; }
+    .summary div { display: table-cell; border: 1px solid #cbd5e1; padding: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Отчет по складу и поставкам</h1>
+  <div class="summary">
+    <div>Продуктов: <strong>{{ report.products_count }}</strong></div>
+    <div>Низкие остатки: <strong>{{ report.low_count }}</strong></div>
+    <div>Всего на складе: <strong>{{ report.total_quantity|number_format(2, ',', ' ') }}</strong></div>
+    <div>Заявок в пути: <strong>{{ report.pending_requests }}</strong></div>
+  </div>
+
+  <h2>Объем поставок по поставщикам</h2>
+  <table>
+    <thead><tr><th>Поставщик</th><th>Заявок</th><th>Количество</th><th>Диаграмма</th></tr></thead>
+    <tbody>
+    {% for row in report.by_supplier %}
+      <tr>
+        <td>{{ row.supplier_name }}</td>
+        <td>{{ row.requests_count }}</td>
+        <td>{{ row.total_products|number_format(2, ',', ' ') }}</td>
+        <td>
+          {% set width = row.total_products / report.max_supplier_total * 170 %}
+          <svg width="180" height="18" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0" y="2" width="170" height="14" fill="#e2e8f0"/>
+            <rect x="0" y="2" width="{{ width }}" height="14" fill="#0f766e"/>
+          </svg>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Остатки продуктов</h2>
+  <table>
+    <thead><tr><th>Продукт</th><th>Остаток</th><th>Минимум</th><th>Пополнение</th><th>Состояние</th></tr></thead>
+    <tbody>
+    {% for item in report.stock %}
+      <tr>
+        <td>{{ item.product_name }}</td>
+        <td>{{ item.quantity|number_format(2, ',', ' ') }}</td>
+        <td>{{ item.min_quantity|number_format(2, ',', ' ') }}</td>
+        <td>{{ item.last_restock_date ?: 'Нет данных' }}</td>
+        <td>{% if item.is_low %}Нужно пополнить{% else %}Достаточно{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Последние заявки поставщикам</h2>
+  <table>
+    <thead><tr><th>Дата</th><th>Поставщик</th><th>Менеджер</th><th>Состав</th><th>Статус</th></tr></thead>
+    <tbody>
+    {% for request in report.requests %}
+      <tr>
+        <td>{{ request.request_date }}</td>
+        <td>{{ request.supplier_name }}</td>
+        <td>{{ request.manager_full_name }}</td>
+        <td>{{ request.products ?: 'Состав не указан' }}</td>
+        <td>{{ request.status }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

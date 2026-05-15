@@ -21,6 +21,15 @@ class WarehouseService
         if (($filters['low'] ?? '') === '1') {
             $where[] = 's.quantity <= s.min_quantity';
         }
+        $sortMap = [
+            'product' => 'p.product_name',
+            'quantity' => 's.quantity',
+            'min' => 's.min_quantity',
+            'restock' => 's.last_restock_date',
+            'state' => 'is_low',
+        ];
+        $sort = array_key_exists((string) ($filters['sort'] ?? ''), $sortMap) ? (string) $filters['sort'] : 'state';
+        $direction = strtolower((string) ($filters['direction'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
 
         $whereSql = $where === [] ? '' : 'WHERE '.implode(' AND ', $where);
         $offset = max(0, ($page - 1) * $limit);
@@ -31,7 +40,7 @@ class WarehouseService
              FROM product_stock s
              JOIN product p ON p.product_id = s.product_id
              $whereSql
-             ORDER BY is_low DESC, p.product_name
+             ORDER BY {$sortMap[$sort]} $direction, p.product_name
              LIMIT $limit OFFSET $offset",
             $params
         );
@@ -99,14 +108,6 @@ class WarehouseService
                     ['request' => $requestId, 'product' => $product['product_id'], 'quantity' => $product['quantity']]
                 );
 
-                if ($data['status'] === 'Получено') {
-                    $this->connection->executeStatement(
-                        'UPDATE product_stock
-                         SET quantity = quantity + :quantity, last_restock_date = :request_date
-                         WHERE product_id = :product',
-                        ['quantity' => $product['quantity'], 'request_date' => $data['request_date'], 'product' => $product['product_id']]
-                    );
-                }
             }
 
             $this->connection->executeStatement(

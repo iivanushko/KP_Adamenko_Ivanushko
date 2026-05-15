@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Service\OrderService;
+use App\Service\ErrorMessageFormatter;
 use App\Service\WarehouseService;
 use Throwable;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -21,6 +22,8 @@ class WarehouseController extends AbstractController
         $filters = [
             'q' => trim((string) $request->query->get('q', '')),
             'low' => (string) $request->query->get('low', ''),
+            'sort' => (string) $request->query->get('sort', 'state'),
+            'direction' => (string) $request->query->get('direction', 'desc'),
         ];
 
         return $this->render('warehouse/index.html.twig', [
@@ -35,7 +38,7 @@ class WarehouseController extends AbstractController
     }
 
     #[Route('/stock/{productId}/update', name: 'stock_update', methods: ['POST'])]
-    public function updateStock(int $productId, Request $request, WarehouseService $warehouse): RedirectResponse
+    public function updateStock(int $productId, Request $request, WarehouseService $warehouse, ErrorMessageFormatter $errors): RedirectResponse
     {
         try {
             $warehouse->updateStock(
@@ -45,20 +48,20 @@ class WarehouseController extends AbstractController
             );
             $this->addFlash('success', 'Остаток обновлен.');
         } catch (Throwable $exception) {
-            $this->addFlash('danger', $exception->getMessage());
+            $this->addFlash('danger', $errors->format($exception));
         }
 
         return new RedirectResponse($request->headers->get('referer') ?: $this->generateUrl('warehouse_index'));
     }
 
     #[Route('/request/create', name: 'request_create', methods: ['POST'])]
-    public function createRequest(Request $request, WarehouseService $warehouse): RedirectResponse
+    public function createRequest(Request $request, WarehouseService $warehouse, ErrorMessageFormatter $errors): RedirectResponse
     {
         try {
             $warehouse->createRequest($request->request->all());
             $this->addFlash('success', 'Заявка поставщику создана.');
         } catch (Throwable $exception) {
-            $this->addFlash('danger', $exception->getMessage());
+            $this->addFlash('danger', $errors->format($exception));
         }
 
         return $this->redirectToRoute('warehouse_index');

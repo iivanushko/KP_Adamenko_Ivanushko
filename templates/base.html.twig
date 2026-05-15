@@ -53,6 +53,11 @@
     .table-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .inline-form { display: flex; gap: 6px; align-items: center; }
     .inline-form input { width: 110px; }
+    .inline-fields { display: grid; grid-template-columns: 110px 110px auto; gap: 8px; align-items: end; }
+    .inline-fields label { font-size: 12px; }
+    .checkline { display: flex; grid-template-columns: none; align-items: center; gap: 8px; color: var(--ink); }
+    .sort-link { color: var(--muted); font-weight: 700; }
+    .sort-link.active { color: var(--brand); }
     .pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 8px; font-size: 12px; font-weight: 700; background: #e2e8f0; }
     .pill.ok { background: #dcfce7; color: var(--ok); }
     .pill.warn { background: #fef3c7; color: var(--accent); }
@@ -73,10 +78,17 @@
     .line-item { display: grid; grid-template-columns: 1fr 130px; gap: 8px; }
     .bar { height: 28px; background: var(--soft); border-radius: 6px; overflow: hidden; border: 1px solid #cce7e2; }
     .bar span { display: block; height: 100%; background: var(--brand); }
+    .switch { display: inline-flex; width: 46px; height: 24px; position: relative; }
+    .switch input { position: absolute; opacity: 0; }
+    .switch span { position: absolute; inset: 0; border-radius: 999px; background: #cbd5e1; cursor: pointer; transition: .15s; }
+    .switch span::before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; border-radius: 50%; background: white; transition: .15s; box-shadow: 0 1px 3px rgba(15,23,42,.25); }
+    .switch input:checked + span { background: var(--brand); }
+    .switch input:checked + span::before { transform: translateX(22px); }
     @media (max-width: 900px) {
       .layout { grid-template-columns: 1fr; }
       .sidebar { position: static; }
       .stats, .two, .form-grid { grid-template-columns: 1fr; }
+      .inline-fields { grid-template-columns: 1fr; }
       main { padding: 18px; }
       table { display: block; overflow-x: auto; }
     }
@@ -85,12 +97,16 @@
 <body>
   <div class="layout">
     <aside class="sidebar">
+      {% set route = app.request.attributes.get('_route') ?? '' %}
       <div class="brand">Кейтеринг</div>
       <nav class="nav">
-        <a href="{{ path('dashboard') }}">Панель</a>
-        <a href="{{ path('orders_index') }}">Банкетные заказы</a>
-        <a href="{{ path('warehouse_index') }}">Склад и поставки</a>
-        <a href="{{ path('reports_orders') }}">Отчеты</a>
+        <a class="{% if route == 'dashboard' %}active{% endif %}" href="{{ path('dashboard') }}">Панель</a>
+        <a class="{% if route starts with 'orders_' %}active{% endif %}" href="{{ path('orders_index') }}">Банкетные заказы</a>
+        <a class="{% if route starts with 'clients_' %}active{% endif %}" href="{{ path('clients_index') }}">Клиенты</a>
+        <a class="{% if route starts with 'menu_' %}active{% endif %}" href="{{ path('menu_index') }}">Меню/Блюда</a>
+        <a class="{% if route starts with 'references_' %}active{% endif %}" href="{{ path('references_index') }}">Справочники</a>
+        <a class="{% if route starts with 'warehouse_' %}active{% endif %}" href="{{ path('warehouse_index') }}">Склад и поставки</a>
+        <a class="{% if route starts with 'reports_' %}active{% endif %}" href="{{ path('reports_orders') }}">Отчеты</a>
       </nav>
     </aside>
     <main>
@@ -113,6 +129,31 @@
       const source = document.querySelector('#product-template').content.cloneNode(true);
       document.querySelector('#product-lines').appendChild(source);
     }
+    function confirmStatusChange(select) {
+      if (select.value === select.dataset.current) return;
+      const finalText = select.value === 'Выполнен'
+        ? 'Перевести заказ в статус "Выполнен"? После этого отмена заказа будет недоступна.'
+        : 'Изменить статус заказа на "' + select.value + '"?';
+      if (confirm(finalText)) {
+        select.form.submit();
+      } else {
+        select.value = select.dataset.current;
+      }
+    }
+    document.addEventListener('submit', function (event) {
+      let invalid = null;
+      event.target.querySelectorAll('[data-future-date]').forEach(function (input) {
+        input.setCustomValidity('');
+        if (input.value && input.min && input.value < input.min) {
+          input.setCustomValidity('Дата активного заказа не может быть в прошлом.');
+          invalid = invalid || input;
+        }
+      });
+      if (invalid) {
+        event.preventDefault();
+        invalid.reportValidity();
+      }
+    });
   </script>
 </body>
 </html>

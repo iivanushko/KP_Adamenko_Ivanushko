@@ -9,6 +9,7 @@
       <div class="muted">Отбор по периоду, статусу и типу мероприятия</div>
     </div>
     <div class="table-actions">
+      <a class="btn ghost" href="{{ path('reports_warehouse') }}">Склад и поставки</a>
       <a class="btn secondary" href="{{ path('reports_orders', filters|merge({format: 'pdf'})) }}">PDF</a>
       <a class="btn secondary" href="{{ path('reports_orders', filters|merge({format: 'xlsx'})) }}">Excel</a>
     </div>

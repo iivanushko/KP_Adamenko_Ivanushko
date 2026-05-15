@@ -40,13 +40,13 @@
   <table>
     <thead>
       <tr>
-        <th>Дата</th>
-        <th>Клиент</th>
-        <th>Менеджер</th>
+        <th><a class="sort-link {% if filters.sort == 'date' %}active{% endif %}" href="{{ path('orders_index', filters|merge({sort: 'date', direction: filters.sort == 'date' and filters.direction == 'asc' ? 'desc' : 'asc', page: 1})) }}">Дата</a></th>
+        <th><a class="sort-link {% if filters.sort == 'client' %}active{% endif %}" href="{{ path('orders_index', filters|merge({sort: 'client', direction: filters.sort == 'client' and filters.direction == 'asc' ? 'desc' : 'asc', page: 1})) }}">Клиент</a></th>
+        <th><a class="sort-link {% if filters.sort == 'manager' %}active{% endif %}" href="{{ path('orders_index', filters|merge({sort: 'manager', direction: filters.sort == 'manager' and filters.direction == 'asc' ? 'desc' : 'asc', page: 1})) }}">Менеджер</a></th>
         <th>Блюда</th>
-        <th>Стоимость</th>
-        <th>Статус</th>
-        <th>Предоплата</th>
+        <th><a class="sort-link {% if filters.sort == 'cost' %}active{% endif %}" href="{{ path('orders_index', filters|merge({sort: 'cost', direction: filters.sort == 'cost' and filters.direction == 'asc' ? 'desc' : 'asc', page: 1})) }}">Стоимость</a></th>
+        <th><a class="sort-link {% if filters.sort == 'status' %}active{% endif %}" href="{{ path('orders_index', filters|merge({sort: 'status', direction: filters.sort == 'status' and filters.direction == 'asc' ? 'desc' : 'asc', page: 1})) }}">Статус</a></th>
+        <th><a class="sort-link {% if filters.sort == 'prepayment' %}active{% endif %}" href="{{ path('orders_index', filters|merge({sort: 'prepayment', direction: filters.sort == 'prepayment' and filters.direction == 'asc' ? 'desc' : 'asc', page: 1})) }}">Предоплата</a></th>
         <th>Действия</th>
       </tr>
     </thead>
@@ -58,12 +58,12 @@
         <td>{{ order.manager_full_name }}</td>
         <td>{{ order.dishes }}</td>
         <td>{{ order.rental_cost|number_format(2, ',', ' ') }} руб.<br>
-          {% if order.is_fully_paid %}<span class="pill ok">Оплачен</span>{% else %}<span class="pill warn">Ожидает оплаты</span>{% endif %}
+          {% if order.is_fully_paid %}<span class="pill ok" title="Рассчитывается автоматически по предоплате и стоимости заказа">Оплачен</span>{% else %}<span class="pill warn" title="Рассчитывается автоматически по предоплате и стоимости заказа">Ожидает оплаты</span>{% endif %}
         </td>
         <td>
           <form class="inline-form" method="post" action="{{ path('orders_inline', {id: order.order_id}) }}">
             <input type="hidden" name="field" value="status">
-            <select name="value" onchange="this.form.submit()" {% if order.status == 'Отменен' %}disabled{% endif %}>
+            <select name="value" data-current="{{ order.status }}" onchange="confirmStatusChange(this)" {% if order.status == 'Отменен' %}disabled{% endif %}>
               {% for status in statuses %}
                 <option value="{{ status }}" {% if order.status == status %}selected{% endif %}>{{ status }}</option>
               {% endfor %}
@@ -110,7 +110,7 @@
                 {% endfor %}
               </select>
             </label>
-            <label>Дата мероприятия <input type="date" name="event_date" value="{{ order.event_date }}" required></label>
+            <label>Дата мероприятия <input type="date" name="event_date" value="{{ order.event_date }}" min="{{ 'now'|date('Y-m-d') }}" {% if order.status not in ['Выполнен', 'Отменен'] %}data-future-date{% endif %} required></label>
             <label>Тип мероприятия
               <select name="event_type">
                 {% for type in event_types %}
@@ -171,7 +171,7 @@
               {% endfor %}
             </select>
           </label>
-          <label>Дата мероприятия <input type="date" name="event_date" min="{{ 'now'|date('Y-m-d') }}" required></label>
+          <label>Дата мероприятия <input type="date" name="event_date" min="{{ 'now'|date('Y-m-d') }}" data-future-date required></label>
         </div>
         <div>
           <div class="table-actions" style="justify-content:space-between;margin-bottom:8px">

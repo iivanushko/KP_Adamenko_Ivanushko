@@ -28,6 +28,17 @@ class OrderService
     {
         [$where, $params] = $this->buildOrderFilter($filters);
         $offset = max(0, ($page - 1) * $limit);
+        $sortMap = [
+            'date' => 'o.event_date',
+            'client' => 'c.client_full_name',
+            'manager' => 'm.manager_full_name',
+            'cost' => 'o.rental_cost',
+            'status' => 'o.status',
+            'prepayment' => 'o.prepayment_amount',
+        ];
+        $sort = array_key_exists((string) ($filters['sort'] ?? ''), $sortMap) ? (string) $filters['sort'] : 'date';
+        $direction = strtolower((string) ($filters['direction'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+        $orderBy = $sortMap[$sort].' '.$direction.', o.order_id DESC';
 
         $items = $this->connection->fetchAllAssociative(
             "SELECT o.order_id, o.client_id, o.manager_id, o.status, o.event_date, o.rental_cost, o.event_type, o.prepayment_amount, o.is_fully_paid,
@@ -40,7 +51,7 @@ class OrderService
              LEFT JOIN dish d ON d.dish_id = od.dish_id
              $where
              GROUP BY o.order_id, c.client_full_name, c.phone_number, m.manager_full_name
-             ORDER BY o.event_date DESC, o.order_id DESC
+             ORDER BY $orderBy
              LIMIT $limit OFFSET $offset",
             $params
         );
@@ -81,6 +92,10 @@ class OrderService
 
     public function createComplexOrder(array $data): array
     {
+        if (($data['event_date'] ?? '') < date('Y-m-d')) {
+            throw new RuntimeException('Дата активного заказа не может быть в прошлом. Выберите сегодняшнюю или будущую дату.');
+        }
+
         $dishes = [];
         foreach (($data['dish_id'] ?? []) as $index => $dishId) {
             $quantity = (float) str_replace(',', '.', (string) ($data['quantity'][$index] ?? 0));
