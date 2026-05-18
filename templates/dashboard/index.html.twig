@@ -18,6 +18,40 @@
     <div class="card stat"><div class="muted">Низкие остатки</div><div class="value">{{ summary.low_stock }}</div></div>
   </section>
 
+  <section class="card" style="margin-top:16px;">
+    <h2>Выручка по месяцам (последние 6 месяцев)</h2>
+    {% if chart_data|length > 0 %}
+      <svg width="100%" height="150" viewBox="0 0 600 150" style="margin-top: 10px;">
+        <!-- Base line -->
+        <line x1="0" y1="130" x2="600" y2="130" stroke="#ccc" stroke-width="2" />
+
+        {% set bar_width = 40 %}
+        {% set spacing = (600 - (chart_data|length * bar_width)) / (chart_data|length + 1) %}
+
+        {% for idx, data in chart_data %}
+          {% set x_pos = spacing + (idx * (bar_width + spacing)) %}
+          {% set height = (data.revenue / max_revenue) * 100 %}
+          {% set y_pos = 130 - height %}
+
+          <!-- Bar -->
+          <rect x="{{ x_pos }}" y="{{ y_pos }}" width="{{ bar_width }}" height="{{ height }}" fill="#4CAF50" />
+
+          <!-- Value Label -->
+          <text x="{{ x_pos + (bar_width / 2) }}" y="{{ y_pos - 5 }}" font-size="12" fill="#555" text-anchor="middle">
+            {{ (data.revenue / 1000)|round(0) }}k
+          </text>
+
+          <!-- Month Label -->
+          <text x="{{ x_pos + (bar_width / 2) }}" y="145" font-size="12" fill="#555" text-anchor="middle">
+            {{ data.month }}
+          </text>
+        {% endfor %}
+      </svg>
+    {% else %}
+      <div class="muted">Нет данных о выручке за последние месяцы.</div>
+    {% endif %}
+  </section>
+
   <section class="grid two" style="margin-top:16px">
     <div class="card">
       <h2>Ближайшие мероприятия</h2>
@@ -30,7 +64,7 @@
             <td>{{ order.client_full_name }}</td>
             <td>{{ order.event_type }}</td>
             <td><span class="pill warn">{{ order.status }}</span></td>
-            <td>{{ order.rental_cost|number_format(2, ',', ' ') }} руб.</td>
+            <td>{{ order.total_cost|number_format(2, ',', ' ') }} руб.</td>
           </tr>
         {% else %}
           <tr><td colspan="5" class="muted">Активных мероприятий пока нет</td></tr>

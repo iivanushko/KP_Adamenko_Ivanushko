@@ -19,7 +19,7 @@ class OrderService
         return [
             'orders_total' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM orders'),
             'active_orders' => (int) $this->connection->fetchOne("SELECT COUNT(*) FROM orders WHERE status NOT IN ('Выполнен', 'Отменен')"),
-            'revenue' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(rental_cost), 0) FROM orders WHERE status <> 'Отменен'"),
+            'revenue' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status <> 'Отменен'"),
             'low_stock' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM product_stock WHERE quantity <= min_quantity'),
         ];
     }
@@ -32,7 +32,7 @@ class OrderService
             'date' => 'o.event_date',
             'client' => 'c.client_full_name',
             'manager' => 'm.manager_full_name',
-            'cost' => 'o.rental_cost',
+            'cost' => 'o.total_cost',
             'status' => 'o.status',
             'prepayment' => 'o.prepayment_amount',
         ];
@@ -41,7 +41,7 @@ class OrderService
         $orderBy = $sortMap[$sort].' '.$direction.', o.order_id DESC';
 
         $items = $this->connection->fetchAllAssociative(
-            "SELECT o.order_id, o.client_id, o.manager_id, o.status, o.event_date, o.rental_cost, o.event_type, o.prepayment_amount, o.is_fully_paid,
+            "SELECT o.order_id, o.client_id, o.manager_id, o.status, o.event_date, o.total_cost, o.event_type, o.prepayment_amount, o.is_fully_paid,
                     c.client_full_name, c.phone_number, m.manager_full_name,
                     COALESCE(string_agg(d.dish_name || ' x ' || od.serving_number, ', ' ORDER BY d.dish_name), 'Блюда не выбраны') AS dishes
              FROM orders o
@@ -152,26 +152,53 @@ class OrderService
             throw new RuntimeException($row['p_message'] ?? 'Заказ не был создан.');
         }
 
+        // Mock log entry for email notification
+        $this->connection->executeStatement(
+            "SELECT log_operation('NOTIFICATION', 'Orders', :id, 'Уведомление отправлено клиенту по email')",
+            ['id' => (int) $row['p_order_id']]
+        );
+
         return $row;
     }
 
     public function updateOrder(int $id, array $data): void
     {
-        $this->connection->executeStatement(
-            'UPDATE orders
-             SET client_id = :client, manager_id = :manager, event_date = :event_date, event_type = :event_type,
-                 status = :status, prepayment_amount = :prepayment
-             WHERE order_id = :id',
-            [
-                'id' => $id,
-                'client' => (int) $data['client_id'],
-                'manager' => (int) $data['manager_id'],
-                'event_date' => $data['event_date'],
-                'event_type' => $data['event_type'],
-                'status' => $data['status'],
-                'prepayment' => (float) str_replace(',', '.', (string) $data['prepayment_amount']),
-            ]
-        );
+        $this->connection->transactional(function () use ($id, $data) {
+            $clientId = (int) $data['client_id'];
+            $managerId = (int) $data['manager_id'];
+
+            $clientExists = $this->connection->fetchOne('SELECT 1 FROM client WHERE client_id = :id', ['id' => $clientId]);
+            if (!$clientExists) {
+                throw new RuntimeException('Выбранный клиент не существует.');
+            }
+
+            $managerExists = $this->connection->fetchOne('SELECT 1 FROM manager WHERE manager_id = :id', ['id' => $managerId]);
+            if (!$managerExists) {
+                throw new RuntimeException('Выбранный менеджер не существует.');
+            }
+
+            $this->connection->executeStatement(
+                'UPDATE orders
+                 SET client_id = :client, manager_id = :manager, event_date = :event_date, event_type = :event_type,
+                     status = :status, prepayment_amount = :prepayment
+                 WHERE order_id = :id',
+                [
+                    'id' => $id,
+                    'client' => $clientId,
+                    'manager' => $managerId,
+                    'event_date' => $data['event_date'],
+                    'event_type' => $data['event_type'],
+                    'status' => $data['status'],
+                    'prepayment' => (float) str_replace(',', '.', (string) $data['prepayment_amount']),
+                ]
+            );
+
+            // Mock log entry for email notification
+            $this->connection->executeStatement(
+                "SELECT log_operation('NOTIFICATION', 'Orders', :id, 'Уведомление отправлено клиенту по email')",
+                ['id' => $id]
+            );
+        });
     }
 
     public function inlineUpdate(int $id, string $field, string $value): void

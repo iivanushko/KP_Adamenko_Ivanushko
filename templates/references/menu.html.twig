@@ -22,6 +22,16 @@
         <option value="0" {% if filters.active == '0' %}selected{% endif %}>Скрытые</option>
       </select>
     </label>
+    <label>Сезонность
+      <select name="seasonality">
+        <option value="">Все</option>
+        <option value="Всесезонное" {% if filters.seasonality == 'Всесезонное' %}selected{% endif %}>Всесезонное</option>
+        <option value="Летнее" {% if filters.seasonality == 'Летнее' %}selected{% endif %}>Летнее</option>
+        <option value="Зимнее" {% if filters.seasonality == 'Зимнее' %}selected{% endif %}>Зимнее</option>
+        <option value="Весеннее" {% if filters.seasonality == 'Весеннее' %}selected{% endif %}>Весеннее</option>
+        <option value="Осеннее" {% if filters.seasonality == 'Осеннее' %}selected{% endif %}>Осеннее</option>
+      </select>
+    </label>
     <button class="btn" type="submit">Найти</button>
     <a class="btn secondary" href="{{ path('menu_index') }}">Сброс</a>
   </form>

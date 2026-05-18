@@ -95,6 +95,23 @@ class OrderController extends AbstractController
         return $this->redirectBack($request);
     }
 
+    #[Route('/{id}/history', name: 'history', methods: ['GET'])]
+    public function history(int $id, \Doctrine\DBAL\Connection $connection): Response
+    {
+        $logs = $connection->fetchAllAssociative(
+            "SELECT operation_date, operation_type, description
+             FROM operation_log
+             WHERE table_name = 'Orders' AND record_id = :id
+             ORDER BY operation_date DESC",
+            ['id' => $id]
+        );
+
+        return $this->render('orders/history.html.twig', [
+            'order_id' => $id,
+            'logs' => $logs,
+        ]);
+    }
+
     private function redirectBack(Request $request): RedirectResponse
     {
         return new RedirectResponse($request->headers->get('referer') ?: $this->generateUrl('orders_index'));

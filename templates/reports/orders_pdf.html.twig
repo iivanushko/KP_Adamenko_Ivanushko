@@ -67,7 +67,7 @@
         <td>{{ order.manager_full_name }}</td>
         <td>{{ order.event_type }}</td>
         <td>{{ order.status }}</td>
-        <td>{{ order.rental_cost|number_format(2, ',', ' ') }}</td>
+        <td>{{ order.total_cost|number_format(2, ',', ' ') }}</td>
         <td>{{ order.prepayment_amount|number_format(2, ',', ' ') }}</td>
       </tr>
     {% endfor %}

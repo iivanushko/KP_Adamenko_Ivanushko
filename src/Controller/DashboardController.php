@@ -14,7 +14,7 @@ class DashboardController extends AbstractController
     public function index(OrderService $orders, Connection $connection): Response
     {
         $upcoming = $connection->fetchAllAssociative(
-            "SELECT o.event_date, o.status, o.rental_cost, o.event_type, c.client_full_name
+            "SELECT o.event_date, o.status, o.total_cost, o.event_type, c.client_full_name
              FROM orders o
              JOIN client c ON c.client_id = o.client_id
              WHERE o.event_date >= CURRENT_DATE AND o.status NOT IN ('Выполнен', 'Отменен')
@@ -29,10 +29,35 @@ class DashboardController extends AbstractController
              LIMIT 8'
         );
 
+        $monthlyRevenue = $connection->fetchAllAssociative(
+            "SELECT to_char(event_date, 'YYYY-MM') AS month, SUM(total_cost) AS revenue
+             FROM orders
+             WHERE status <> 'Отменен'
+             GROUP BY month
+             ORDER BY month DESC
+             LIMIT 6"
+        );
+
+        $chartData = [];
+        $maxRevenue = 0;
+
+        foreach (array_reverse($monthlyRevenue) as $row) {
+            $rev = (float) $row['revenue'];
+            if ($rev > $maxRevenue) {
+                $maxRevenue = $rev;
+            }
+            $chartData[] = [
+                'month' => $row['month'],
+                'revenue' => $rev
+            ];
+        }
+
         return $this->render('dashboard/index.html.twig', [
             'summary' => $orders->getSummary(),
             'upcoming' => $upcoming,
             'logs' => $logs,
+            'chart_data' => $chartData,
+            'max_revenue' => $maxRevenue > 0 ? $maxRevenue : 1, // Prevent division by zero
         ]);
     }
 }
