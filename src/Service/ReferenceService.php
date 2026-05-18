@@ -80,6 +80,10 @@ class ReferenceService
             $where[] = 'is_active = :active';
             $params['active'] = $filters['active'] === '1';
         }
+        if (($filters['seasonality'] ?? '') !== '') {
+            $where[] = 'seasonality = :seasonality';
+            $params['seasonality'] = $filters['seasonality'];
+        }
 
         $whereSql = $where === [] ? '' : 'WHERE '.implode(' AND ', $where);
         $offset = max(0, ($page - 1) * $limit);

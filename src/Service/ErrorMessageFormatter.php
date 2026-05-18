@@ -30,6 +30,18 @@ class ErrorMessageFormatter
             return 'Выполненный заказ нельзя отменить.';
         }
 
+        if ($exception instanceof \Doctrine\DBAL\Exception\DriverException) {
+            $sqlState = $exception->getSQLState();
+
+            if ($sqlState === '23503') { // foreign_key_violation
+                return 'Запись используется в заказах, рецептах или поставках, поэтому ее нельзя удалить.';
+            }
+
+            if ($sqlState === '23505') { // unique_violation
+                return 'Такая запись уже существует.';
+            }
+        }
+
         if (str_contains($message, 'violates foreign key constraint')) {
             return 'Запись используется в заказах, рецептах или поставках, поэтому ее нельзя удалить.';
         }

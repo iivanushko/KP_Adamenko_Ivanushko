@@ -76,7 +76,7 @@
             </table>
           </details>
         </td>
-        <td>{{ order.rental_cost|number_format(2, ',', ' ') }} руб.<br>
+        <td>{{ order.total_cost|number_format(2, ',', ' ') }} руб.<br>
           {% if order.is_fully_paid %}<span class="pill ok" title="Рассчитывается автоматически по предоплате и стоимости заказа">Оплачен</span>{% else %}<span class="pill warn" title="Рассчитывается автоматически по предоплате и стоимости заказа">Ожидает оплаты</span>{% endif %}
         </td>
         <td>
@@ -98,6 +98,7 @@
         </td>
         <td>
           <div class="table-actions">
+            <a class="btn ghost" href="{{ path('orders_history', {id: order.order_id}) }}">История</a>
             <button class="btn secondary" type="button" onclick="openModal('edit-order-{{ order.order_id }}')">Изменить</button>
             {% if order.status not in ['Отменен', 'Выполнен'] %}
               <form method="post" action="{{ path('orders_cancel', {id: order.order_id}) }}" onsubmit="return confirm('Отменить заказ и вернуть продукты на склад?')">

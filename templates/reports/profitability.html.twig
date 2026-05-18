@@ -1,0 +1,52 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Отчет по прибыльности блюд{% endblock %}
+
+{% block body %}
+  <div class="topline">
+    <div>
+      <h1>Отчет по прибыльности блюд</h1>
+      <div class="muted">Сводка по проданным блюдам и их вкладу в общую прибыль</div>
+    </div>
+    <div class="table-actions">
+      <a class="btn ghost" href="{{ path('reports_orders') }}">Заказы</a>
+      <a class="btn ghost" href="{{ path('reports_warehouse') }}">Склад и поставки</a>
+    </div>
+  </div>
+
+  <section class="grid stats" style="margin-bottom: 16px;">
+    <div class="card stat"><div class="muted">Блюд в отчете</div><div class="value">{{ report|length }}</div></div>
+    <div class="card stat"><div class="muted">Общая прибыль</div><div class="value">{{ total_overall_profit|number_format(2, ',', ' ') }} руб.</div></div>
+  </section>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Название блюда</th>
+        <th>Категория</th>
+        <th>Себестоимость</th>
+        <th>Цена продажи</th>
+        <th>Прибыль (1 шт.)</th>
+        <th>Продано порций</th>
+        <th>Суммарная прибыль</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in report %}
+        <tr>
+          <td>{{ item.dish_name }}</td>
+          <td>{{ item.price_category|default('-') }}</td>
+          <td>{{ item.cost_price|number_format(2, ',', ' ') }} руб.</td>
+          <td>{{ item.sale_price|number_format(2, ',', ' ') }} руб.</td>
+          <td>{{ item.profit|number_format(2, ',', ' ') }} руб.</td>
+          <td>{{ item.total_sold }}</td>
+          <td><strong>{{ item.total_profit|number_format(2, ',', ' ') }} руб.</strong></td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="7" class="muted">Данные отсутствуют</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

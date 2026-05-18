@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}История заказа #{{ order_id }}{% endblock %}
+
+{% block body %}
+  <div class="topline">
+    <div>
+      <h1>История заказа #{{ order_id }}</h1>
+      <div class="muted">Лог операций и изменения статусов</div>
+    </div>
+    <a class="btn" href="{{ path('orders_index') }}">Назад к заказам</a>
+  </div>
+
+  <section class="card" style="margin-top:16px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Время</th>
+          <th>Операция</th>
+          <th>Описание</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+          <tr>
+            <td>{{ log.operation_date }}</td>
+            <td><span class="pill warn">{{ log.operation_type }}</span></td>
+            <td>{{ log.description }}</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="3" class="muted">История операций для этого заказа пока пуста</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endblock %}

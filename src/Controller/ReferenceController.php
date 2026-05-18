@@ -51,6 +51,7 @@ class ReferenceController extends AbstractController
         $filters = [
             'q' => trim((string) $request->query->get('q', '')),
             'active' => (string) $request->query->get('active', ''),
+            'seasonality' => (string) $request->query->get('seasonality', ''),
         ];
         $result = $references->dishes($filters, $page, 10);
 

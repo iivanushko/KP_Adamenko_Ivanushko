@@ -54,6 +54,28 @@ class ReportController extends AbstractController
         ]);
     }
 
+    #[Route('/profitability', name: 'profitability', methods: ['GET'])]
+    public function profitability(Connection $connection): Response
+    {
+        $report = $connection->fetchAllAssociative(
+            "SELECT d.dish_name, d.price_category, d.cost_price, d.sale_price, d.profit,
+                    COALESCE(SUM(CASE WHEN o.status <> 'Отменен' THEN od.serving_number ELSE 0 END), 0) AS total_sold,
+                    COALESCE(SUM(CASE WHEN o.status <> 'Отменен' THEN od.serving_number ELSE 0 END) * d.profit, 0) AS total_profit
+             FROM dish d
+             LEFT JOIN order_details od ON od.dish_id = d.dish_id
+             LEFT JOIN orders o ON o.order_id = od.order_id
+             GROUP BY d.dish_id, d.dish_name, d.price_category, d.cost_price, d.sale_price, d.profit
+             ORDER BY total_profit DESC, total_sold DESC"
+        );
+
+        $totalOverallProfit = array_sum(array_column($report, 'total_profit'));
+
+        return $this->render('reports/profitability.html.twig', [
+            'report' => $report,
+            'total_overall_profit' => $totalOverallProfit,
+        ]);
+    }
+
     #[Route('/warehouse', name: 'warehouse', methods: ['GET'])]
     public function warehouse(Request $request, Connection $connection): Response
     {
@@ -121,7 +143,7 @@ class ReportController extends AbstractController
 
         $whereSql = 'WHERE '.implode(' AND ', $where);
         $orders = $connection->fetchAllAssociative(
-            "SELECT o.event_date, o.status, o.event_type, o.rental_cost, o.prepayment_amount, o.is_fully_paid,
+            "SELECT o.event_date, o.status, o.event_type, o.total_cost, o.prepayment_amount, o.is_fully_paid,
                     c.client_full_name, m.manager_full_name
              FROM orders o
              JOIN client c ON c.client_id = o.client_id
@@ -132,7 +154,7 @@ class ReportController extends AbstractController
         );
 
         $byType = $connection->fetchAllAssociative(
-            "SELECT o.event_type, COUNT(*) AS orders_count, COALESCE(SUM(o.rental_cost), 0) AS revenue
+            "SELECT o.event_type, COUNT(*) AS orders_count, COALESCE(SUM(o.total_cost), 0) AS revenue
              FROM orders o $whereSql
              GROUP BY o.event_type
              ORDER BY revenue DESC",
@@ -144,7 +166,7 @@ class ReportController extends AbstractController
             'by_type' => $byType,
             'max_type_revenue' => max([1, ...array_map(static fn (array $row): float => (float) $row['revenue'], $byType)]),
             'total_count' => count($orders),
-            'total_revenue' => array_sum(array_map(static fn (array $row): float => (float) $row['rental_cost'], $orders)),
+            'total_revenue' => array_sum(array_map(static fn (array $row): float => (float) $row['total_cost'], $orders)),
             'total_prepayment' => array_sum(array_map(static fn (array $row): float => (float) $row['prepayment_amount'], $orders)),
         ];
     }
@@ -243,7 +265,7 @@ class ReportController extends AbstractController
                 $order['manager_full_name'],
                 $order['event_type'],
                 $order['status'],
-                (float) $order['rental_cost'],
+                (float) $order['total_cost'],
                 (float) $order['prepayment_amount'],
                 $order['is_fully_paid'] ? 'Да' : 'Нет',
             ], null, 'A'.$rowNumber);
