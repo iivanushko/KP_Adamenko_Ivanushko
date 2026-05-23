@@ -19,7 +19,8 @@ class OrderService
         return [
             'orders_total' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM orders'),
             'active_orders' => (int) $this->connection->fetchOne("SELECT COUNT(*) FROM orders WHERE status NOT IN ('Выполнен', 'Отменен')"),
-            'revenue' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(rental_cost), 0) FROM orders WHERE status <> 'Отменен'"),
+            'revenue' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(rental_cost), 0) FROM orders WHERE status = 'Выполнен'"),
+            'revenue_forecast' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(rental_cost), 0) FROM orders WHERE status IN ('В обработке', 'Забронирован')"),
             'low_stock' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM product_stock WHERE quantity <= min_quantity'),
         ];
     }
@@ -28,17 +29,10 @@ class OrderService
     {
         [$where, $params] = $this->buildOrderFilter($filters);
         $offset = max(0, ($page - 1) * $limit);
-        $sortMap = [
-            'date' => 'o.event_date',
-            'client' => 'c.client_full_name',
-            'manager' => 'm.manager_full_name',
-            'cost' => 'o.rental_cost',
-            'status' => 'o.status',
-            'prepayment' => 'o.prepayment_amount',
-        ];
-        $sort = array_key_exists((string) ($filters['sort'] ?? ''), $sortMap) ? (string) $filters['sort'] : 'date';
-        $direction = strtolower((string) ($filters['direction'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
-        $orderBy = $sortMap[$sort].' '.$direction.', o.order_id DESC';
+        $orderBy = $this->buildOrdersOrderBy(
+            (string) ($filters['sort'] ?? ''),
+            (string) ($filters['direction'] ?? '')
+        );
 
         $items = $this->connection->fetchAllAssociative(
             "SELECT o.order_id, o.client_id, o.manager_id, o.status, o.event_date, o.rental_cost AS total_cost, o.event_type, o.prepayment_amount, o.is_fully_paid,
@@ -81,7 +75,7 @@ class OrderService
     public function getOrderDetails(int $id): array
     {
         return $this->connection->fetchAllAssociative(
-            'SELECT d.dish_name, od.serving_number, d.sale_price, od.serving_number * d.sale_price AS line_total
+            'SELECT d.dish_id, d.dish_name, od.serving_number, d.sale_price, od.serving_number * d.sale_price AS line_total
              FROM order_details od
              JOIN dish d ON d.dish_id = od.dish_id
              WHERE od.order_id = :id
@@ -98,7 +92,7 @@ class OrderService
         }
 
         $rows = $this->connection->fetchAllAssociative(
-            'SELECT od.order_id, d.dish_name, od.serving_number, d.sale_price, od.serving_number * d.sale_price AS line_total
+            'SELECT od.order_id, d.dish_id, d.dish_name, od.serving_number, d.sale_price, od.serving_number * d.sale_price AS line_total
              FROM order_details od
              JOIN dish d ON d.dish_id = od.dish_id
              WHERE od.order_id IN (:ids)
@@ -120,45 +114,34 @@ class OrderService
         if (($data['event_date'] ?? '') < date('Y-m-d')) {
             throw new RuntimeException('Дата активного заказа не может быть в прошлом. Выберите сегодняшнюю или будущую дату.');
         }
+        $eventType = $this->validatedEventType((string) ($data['event_type'] ?? ''));
 
-        $dishes = [];
-        $seen = [];
-        foreach (($data['dish_id'] ?? []) as $index => $dishId) {
-            $quantity = (float) str_replace(',', '.', (string) ($data['quantity'][$index] ?? 0));
-            if ((int) $dishId > 0 && $quantity > 0) {
-                if (isset($seen[(int) $dishId])) {
-                    throw new RuntimeException('Одно блюдо нельзя добавлять в заказ дважды. Объедините количество порций в одной строке.');
-                }
-                $seen[(int) $dishId] = true;
-                $dishes[] = ['dish_id' => (int) $dishId, 'quantity' => $quantity];
+        $dishes = $this->parseDishLines($data);
+
+        return $this->connection->transactional(function () use ($data, $eventType, $dishes): array {
+            $row = $this->connection->fetchAssociative(
+                'CALL create_complex_order_full(:client, :manager, :event_date, :event_type, CAST(:dishes AS jsonb), NULL, NULL, NULL, NULL)',
+                [
+                    'client' => (int) $data['client_id'],
+                    'manager' => (int) $data['manager_id'],
+                    'event_date' => $data['event_date'],
+                    'event_type' => $eventType,
+                    'dishes' => json_encode($dishes, JSON_UNESCAPED_UNICODE),
+                ]
+            );
+
+            if (!$row || ($row['p_status'] ?? 'ERROR') !== 'SUCCESS') {
+                throw new RuntimeException($row['p_message'] ?? 'Заказ не был создан.');
             }
-        }
 
-        if ($dishes === []) {
-            throw new RuntimeException('Выберите хотя бы одно блюдо и укажите количество порций.');
-        }
+            // Mock log entry for email notification
+            $this->connection->executeStatement(
+                "SELECT log_operation('NOTIFICATION', 'Orders', :id, 'Уведомление отправлено клиенту по email')",
+                ['id' => (int) $row['p_order_id']]
+            );
 
-        $row = $this->connection->fetchAssociative(
-            'CALL create_complex_order_full(:client, :manager, :event_date, CAST(:dishes AS jsonb), NULL, NULL, NULL, NULL)',
-            [
-                'client' => (int) $data['client_id'],
-                'manager' => (int) $data['manager_id'],
-                'event_date' => $data['event_date'],
-                'dishes' => json_encode($dishes, JSON_UNESCAPED_UNICODE),
-            ]
-        );
-
-        if (!$row || ($row['p_status'] ?? 'ERROR') !== 'SUCCESS') {
-            throw new RuntimeException($row['p_message'] ?? 'Заказ не был создан.');
-        }
-
-        // Mock log entry for email notification
-        $this->connection->executeStatement(
-            "SELECT log_operation('NOTIFICATION', 'Orders', :id, 'Уведомление отправлено клиенту по email')",
-            ['id' => (int) $row['p_order_id']]
-        );
-
-        return $row;
+            return $row;
+        });
     }
 
     public function updateOrder(int $id, array $data): void
@@ -166,6 +149,15 @@ class OrderService
         $this->connection->transactional(function () use ($id, $data) {
             $clientId = (int) $data['client_id'];
             $managerId = (int) $data['manager_id'];
+            $eventType = $this->validatedEventType((string) ($data['event_type'] ?? ''));
+            $status = $this->validatedStatus((string) ($data['status'] ?? ''));
+            $currentStatus = (string) $this->connection->fetchOne(
+                'SELECT status FROM orders WHERE order_id = :id FOR UPDATE',
+                ['id' => $id]
+            );
+            if ($currentStatus === '') {
+                throw new RuntimeException('Заказ не найден.');
+            }
 
             $clientExists = $this->connection->fetchOne('SELECT 1 FROM client WHERE client_id = :id', ['id' => $clientId]);
             if (!$clientExists) {
@@ -175,6 +167,14 @@ class OrderService
             $managerExists = $this->connection->fetchOne('SELECT 1 FROM manager WHERE manager_id = :id', ['id' => $managerId]);
             if (!$managerExists) {
                 throw new RuntimeException('Выбранный менеджер не существует.');
+            }
+
+            if (array_key_exists('dish_id', $data)) {
+                if (in_array($currentStatus, ['Выполнен', 'Отменен'], true)) {
+                    throw new RuntimeException('Состав выполненного или отмененного заказа нельзя изменять.');
+                }
+
+                $this->replaceOrderDishes($id, $this->parseDishLines($data));
             }
 
             $this->connection->executeStatement(
@@ -187,8 +187,8 @@ class OrderService
                     'client' => $clientId,
                     'manager' => $managerId,
                     'event_date' => $data['event_date'],
-                    'event_type' => $data['event_type'],
-                    'status' => $data['status'],
+                    'event_type' => $eventType,
+                    'status' => $status,
                     'prepayment' => (float) str_replace(',', '.', (string) $data['prepayment_amount']),
                 ]
             );
@@ -263,5 +263,128 @@ class OrderService
         }
 
         return [$where === [] ? '' : 'WHERE '.implode(' AND ', $where), $params];
+    }
+
+    private function buildOrdersOrderBy(string $sort, string $direction): string
+    {
+        $column = match ($sort) {
+            'client' => 'c.client_full_name',
+            'manager' => 'm.manager_full_name',
+            'cost' => 'o.rental_cost',
+            'status' => 'o.status',
+            'prepayment' => 'o.prepayment_amount',
+            default => 'o.event_date',
+        };
+
+        $directionSql = strtolower($direction) === 'asc' ? 'ASC' : 'DESC';
+
+        return $column.' '.$directionSql.', o.order_id DESC';
+    }
+
+    private function validatedEventType(string $eventType): string
+    {
+        if (!in_array($eventType, self::EVENT_TYPES, true)) {
+            throw new RuntimeException('Выберите корректный тип мероприятия.');
+        }
+
+        return $eventType;
+    }
+
+    private function validatedStatus(string $status): string
+    {
+        if (!in_array($status, self::STATUSES, true)) {
+            throw new RuntimeException('Выберите корректный статус заказа.');
+        }
+
+        return $status;
+    }
+
+    private function parseDishLines(array $data): array
+    {
+        $dishes = [];
+        $seen = [];
+        foreach (($data['dish_id'] ?? []) as $index => $dishId) {
+            $quantity = (float) str_replace(',', '.', (string) ($data['quantity'][$index] ?? 0));
+            if ((int) $dishId > 0 && $quantity > 0) {
+                if (isset($seen[(int) $dishId])) {
+                    throw new RuntimeException('Одно блюдо нельзя добавлять в заказ дважды. Объедините количество порций в одной строке.');
+                }
+                $seen[(int) $dishId] = true;
+                $dishes[] = ['dish_id' => (int) $dishId, 'quantity' => $quantity];
+            }
+        }
+
+        if ($dishes === []) {
+            throw new RuntimeException('Выберите хотя бы одно блюдо и укажите количество порций.');
+        }
+
+        return $dishes;
+    }
+
+    private function replaceOrderDishes(int $orderId, array $dishes): void
+    {
+        foreach ($this->connection->fetchAllAssociative('SELECT product_id, quantity FROM reserved_products WHERE order_id = :id', ['id' => $orderId]) as $reservation) {
+            $this->connection->executeStatement(
+                'UPDATE product_stock SET quantity = quantity + :quantity WHERE product_id = :product',
+                ['product' => (int) $reservation['product_id'], 'quantity' => (float) $reservation['quantity']]
+            );
+        }
+
+        $this->connection->executeStatement('DELETE FROM reserved_products WHERE order_id = :id', ['id' => $orderId]);
+        $this->connection->executeStatement('DELETE FROM order_details WHERE order_id = :id', ['id' => $orderId]);
+
+        $totalCost = 0.0;
+        foreach ($dishes as $dish) {
+            $dishRow = $this->connection->fetchAssociative(
+                'SELECT dish_id, sale_price FROM dish WHERE dish_id = :id AND is_active = TRUE',
+                ['id' => $dish['dish_id']]
+            );
+            if (!$dishRow) {
+                throw new RuntimeException('Выбранное блюдо недоступно или скрыто из меню.');
+            }
+
+            $this->connection->executeStatement(
+                'INSERT INTO order_details (order_id, dish_id, serving_number)
+                 VALUES (:order, :dish, :quantity)',
+                ['order' => $orderId, 'dish' => $dish['dish_id'], 'quantity' => $dish['quantity']]
+            );
+
+            $totalCost += (float) $dishRow['sale_price'] * (float) $dish['quantity'];
+            foreach ($this->connection->fetchAllAssociative('SELECT product_id, number_in_recipe FROM recipe WHERE dish_id = :id', ['id' => $dish['dish_id']]) as $recipe) {
+                $requiredQuantity = (float) $recipe['number_in_recipe'] * (float) $dish['quantity'];
+                $availableQuantity = $this->connection->fetchOne(
+                    'SELECT quantity FROM product_stock WHERE product_id = :id FOR UPDATE',
+                    ['id' => (int) $recipe['product_id']]
+                );
+                $availableQuantity = $availableQuantity === false ? 0.0 : (float) $availableQuantity;
+                if ($availableQuantity < $requiredQuantity) {
+                    throw new RuntimeException(sprintf(
+                        'Недостаточно продукта (ID: %d) на складе! Нужно: %.3f, доступно: %.3f',
+                        (int) $recipe['product_id'],
+                        $requiredQuantity,
+                        $availableQuantity
+                    ));
+                }
+
+                $this->connection->executeStatement(
+                    'UPDATE product_stock SET quantity = quantity - :quantity WHERE product_id = :product',
+                    ['product' => (int) $recipe['product_id'], 'quantity' => $requiredQuantity]
+                );
+                $this->connection->executeStatement(
+                    'INSERT INTO reserved_products (order_id, product_id, quantity)
+                     VALUES (:order, :product, :quantity)',
+                    ['order' => $orderId, 'product' => (int) $recipe['product_id'], 'quantity' => $requiredQuantity]
+                );
+            }
+        }
+
+        $this->connection->executeStatement(
+            'UPDATE orders SET rental_cost = :total WHERE order_id = :id',
+            ['id' => $orderId, 'total' => $totalCost]
+        );
+        $this->connection->executeStatement(
+            "SELECT log_operation('UPDATE_DISHES', 'Orders', :id, 'Состав заказа обновлен, складские резервы пересчитаны')",
+            ['id' => $orderId]
+        );
     }
 }

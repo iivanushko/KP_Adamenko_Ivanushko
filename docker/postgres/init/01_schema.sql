@@ -200,6 +200,44 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_log_order_status AFTER UPDATE OF status ON Orders
 FOR EACH ROW EXECUTE FUNCTION log_order_status_change();
 
+CREATE OR REPLACE FUNCTION close_order_reservations_on_final_status() RETURNS TRIGGER AS $$
+DECLARE
+    v_rec RECORD;
+    v_deleted_count INT;
+BEGIN
+    IF NEW.status = 'Выполнен' AND OLD.status <> 'Выполнен' THEN
+        DELETE FROM reserved_products WHERE order_id = NEW.order_id;
+        GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+
+        IF v_deleted_count > 0 THEN
+            PERFORM log_operation('CLOSE_RESERVE', 'Orders', NEW.order_id, 'Заказ выполнен, резерв продуктов закрыт');
+        END IF;
+    ELSIF NEW.status = 'Отменен' AND OLD.status <> 'Отменен' THEN
+        FOR v_rec IN
+            SELECT product_id, quantity
+            FROM reserved_products
+            WHERE order_id = NEW.order_id
+        LOOP
+            UPDATE product_stock
+            SET quantity = quantity + v_rec.quantity
+            WHERE product_id = v_rec.product_id;
+        END LOOP;
+
+        DELETE FROM reserved_products WHERE order_id = NEW.order_id;
+        GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+
+        IF v_deleted_count > 0 THEN
+            PERFORM log_operation('CLOSE_RESERVE', 'Orders', NEW.order_id, 'Заказ отменен, резерв продуктов возвращен на склад');
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_close_order_reservations AFTER UPDATE OF status ON Orders
+FOR EACH ROW EXECUTE FUNCTION close_order_reservations_on_final_status();
+
 CREATE OR REPLACE FUNCTION apply_received_supplier_request_detail() RETURNS TRIGGER AS $$
 DECLARE
     v_status VARCHAR;
@@ -251,6 +289,7 @@ CREATE OR REPLACE PROCEDURE create_complex_order_full(
     IN p_client_id INT,
     IN p_manager_id INT,
     IN p_event_date DATE,
+    IN p_event_type VARCHAR,
     IN p_dishes JSONB,
     OUT p_order_id INT,
     OUT p_total_cost NUMERIC,
@@ -264,8 +303,8 @@ DECLARE
 BEGIN
     p_status := 'ERROR'; p_message := ''; p_total_cost := 0;
 
-    INSERT INTO Orders (client_id, manager_id, event_date, status, rental_cost)
-    VALUES (p_client_id, p_manager_id, p_event_date, 'В обработке', 0)
+    INSERT INTO Orders (client_id, manager_id, event_date, event_type, status, rental_cost)
+    VALUES (p_client_id, p_manager_id, p_event_date, p_event_type, 'В обработке', 0)
     RETURNING order_id INTO p_order_id;
 
     FOR v_dish_record IN SELECT * FROM jsonb_array_elements(p_dishes) LOOP

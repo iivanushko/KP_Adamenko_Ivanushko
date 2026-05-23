@@ -55,24 +55,18 @@ class ReportController extends AbstractController
     }
 
     #[Route('/profitability', name: 'profitability', methods: ['GET'])]
-    public function profitability(Connection $connection): Response
+    public function profitability(Request $request, Connection $connection): Response
     {
-        $report = $connection->fetchAllAssociative(
-            "SELECT d.dish_name, d.price_category, d.cost_price, d.sale_price, d.profit,
-                    COALESCE(SUM(CASE WHEN o.status <> 'Отменен' THEN od.serving_number ELSE 0 END), 0) AS total_sold,
-                    COALESCE(SUM(CASE WHEN o.status <> 'Отменен' THEN od.serving_number ELSE 0 END) * d.profit, 0) AS total_profit
-             FROM dish d
-             LEFT JOIN order_details od ON od.dish_id = d.dish_id
-             LEFT JOIN orders o ON o.order_id = od.order_id
-             GROUP BY d.dish_id, d.dish_name, d.price_category, d.cost_price, d.sale_price, d.profit
-             ORDER BY total_profit DESC, total_sold DESC"
-        );
-
-        $totalOverallProfit = array_sum(array_column($report, 'total_profit'));
+        $filters = $this->profitabilityFilters($request);
+        $report = $this->buildProfitabilityReport($connection, $filters);
 
         return $this->render('reports/profitability.html.twig', [
-            'report' => $report,
-            'total_overall_profit' => $totalOverallProfit,
+            'filters' => $filters,
+            'report' => $report['items'],
+            'total_overall_profit' => $report['total_profit'],
+            'total_sold' => $report['total_sold'],
+            'managers' => $connection->fetchAllAssociative('SELECT manager_id, manager_full_name FROM manager ORDER BY manager_full_name'),
+            'price_categories' => $connection->fetchFirstColumn("SELECT DISTINCT price_category FROM dish WHERE price_category IS NOT NULL ORDER BY price_category"),
         ]);
     }
 
@@ -124,6 +118,16 @@ class ReportController extends AbstractController
             'status' => (string) $request->query->get('status', ''),
             'date_from' => (string) $request->query->get('date_from', ''),
             'date_to' => (string) $request->query->get('date_to', ''),
+        ];
+    }
+
+    private function profitabilityFilters(Request $request): array
+    {
+        return [
+            'date_from' => (string) $request->query->get('date_from', date('Y-m-01')),
+            'date_to' => (string) $request->query->get('date_to', date('Y-m-d')),
+            'manager_id' => (string) $request->query->get('manager_id', ''),
+            'price_category' => (string) $request->query->get('price_category', ''),
         ];
     }
 
@@ -247,6 +251,52 @@ class ReportController extends AbstractController
             'total_quantity' => array_sum(array_map(static fn (array $row): float => (float) $row['quantity'], $stock)),
             'pending_requests' => count(array_filter($requests, static fn (array $row): bool => $row['status'] !== 'Получено')),
             'received_requests' => count(array_filter($requests, static fn (array $row): bool => $row['status'] === 'Получено')),
+        ];
+    }
+
+    private function buildProfitabilityReport(Connection $connection, array $filters): array
+    {
+        $joinConditions = [
+            'o.order_id = od.order_id',
+            "o.status <> 'Отменен'",
+            'o.event_date BETWEEN :date_from AND :date_to',
+        ];
+        $params = [
+            'date_from' => $filters['date_from'],
+            'date_to' => $filters['date_to'],
+        ];
+
+        if ($filters['manager_id'] !== '') {
+            $joinConditions[] = 'o.manager_id = :manager_id';
+            $params['manager_id'] = (int) $filters['manager_id'];
+        }
+
+        $where = [];
+        if ($filters['price_category'] !== '') {
+            $where[] = 'd.price_category = :price_category';
+            $params['price_category'] = $filters['price_category'];
+        }
+
+        $whereSql = $where === [] ? '' : 'WHERE '.implode(' AND ', $where);
+        $ordersJoinSql = implode(' AND ', $joinConditions);
+
+        $items = $connection->fetchAllAssociative(
+            "SELECT d.dish_name, d.price_category, d.cost_price, d.sale_price, d.profit,
+                    COALESCE(SUM(CASE WHEN o.order_id IS NOT NULL THEN od.serving_number ELSE 0 END), 0) AS total_sold,
+                    COALESCE(SUM(CASE WHEN o.order_id IS NOT NULL THEN od.serving_number ELSE 0 END) * d.profit, 0) AS total_profit
+             FROM dish d
+             LEFT JOIN order_details od ON od.dish_id = d.dish_id
+             LEFT JOIN orders o ON $ordersJoinSql
+             $whereSql
+             GROUP BY d.dish_id, d.dish_name, d.price_category, d.cost_price, d.sale_price, d.profit
+             ORDER BY total_profit DESC, total_sold DESC, d.dish_name",
+            $params
+        );
+
+        return [
+            'items' => $items,
+            'total_profit' => array_sum(array_map(static fn (array $row): float => (float) $row['total_profit'], $items)),
+            'total_sold' => array_sum(array_map(static fn (array $row): float => (float) $row['total_sold'], $items)),
         ];
     }
 

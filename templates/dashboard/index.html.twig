@@ -14,12 +14,24 @@
   <section class="grid stats">
     <div class="card stat"><div class="muted">Всего заказов</div><div class="value">{{ summary.orders_total }}</div></div>
     <div class="card stat"><div class="muted">Активные заказы</div><div class="value">{{ summary.active_orders }}</div></div>
-    <div class="card stat"><div class="muted">Выручка</div><div class="value">{{ summary.revenue|number_format(0, ',', ' ') }} руб.</div></div>
+    <div class="card stat">
+      <div class="muted">Выручка (выполненные)</div>
+      <div class="value">{{ summary.revenue|number_format(0, ',', ' ') }} руб.</div>
+      {% if summary.revenue_forecast > 0 %}
+        <div class="muted" style="margin-top:4px;font-size:0.8em;">
+          + {{ summary.revenue_forecast|number_format(0, ',', ' ') }} руб. прогноз
+        </div>
+      {% endif %}
+    </div>
     <div class="card stat"><div class="muted">Низкие остатки</div><div class="value">{{ summary.low_stock }}</div></div>
   </section>
 
   <section class="card" style="margin-top:16px;">
     <h2>Выручка по месяцам (последние 6 месяцев)</h2>
+    <div style="display:flex;gap:16px;align-items:center;margin:8px 0 4px;font-size:0.82em;">
+      <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background:#4CAF50;border-radius:2px;"></span> Выполнено</span>
+      <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:12px;height:12px;background:#FFC107;border-radius:2px;opacity:0.75;"></span> Прогноз (активные)</span>
+    </div>
     {% if chart_data|length > 0 %}
       <svg width="100%" height="150" viewBox="0 0 600 150" style="margin-top: 10px;">
         <!-- Base line -->
@@ -30,15 +42,27 @@
 
         {% for idx, data in chart_data %}
           {% set x_pos = spacing + (idx * (bar_width + spacing)) %}
-          {% set height = (data.revenue / max_revenue) * 100 %}
-          {% set y_pos = 130 - height %}
 
-          <!-- Bar -->
-          <rect x="{{ x_pos }}" y="{{ y_pos }}" width="{{ bar_width }}" height="{{ height }}" fill="#4CAF50" />
+          {# Фактическая выручка (зелёная) #}
+          {% set h_rev = (data.revenue / max_revenue) * 100 %}
+          {% set y_rev = 130 - h_rev %}
 
-          <!-- Value Label -->
-          <text x="{{ x_pos + (bar_width / 2) }}" y="{{ y_pos - 5 }}" font-size="12" fill="#555" text-anchor="middle">
-            {{ (data.revenue / 1000)|round(0) }}k
+          {# Прогноз — поверх фактической (жёлтая, полупрозрачная) #}
+          {% set h_fore = (data.forecast / max_revenue) * 100 %}
+          {% set y_fore = y_rev - h_fore %}
+
+          <!-- Фактическая выручка -->
+          <rect x="{{ x_pos }}" y="{{ y_rev }}" width="{{ bar_width }}" height="{{ h_rev }}" fill="#4CAF50" />
+
+          <!-- Прогноз -->
+          {% if h_fore > 0 %}
+            <rect x="{{ x_pos }}" y="{{ y_fore }}" width="{{ bar_width }}" height="{{ h_fore }}" fill="#FFC107" opacity="0.75" />
+          {% endif %}
+
+          <!-- Итоговый лейбл -->
+          {% set total = data.revenue + data.forecast %}
+          <text x="{{ x_pos + (bar_width / 2) }}" y="{{ (h_fore > 0 ? y_fore : y_rev) - 5 }}" font-size="11" fill="#555" text-anchor="middle">
+            {{ (total / 1000)|round(0) }}k
           </text>
 
           <!-- Month Label -->

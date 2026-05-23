@@ -30,7 +30,9 @@ class DashboardController extends AbstractController
         );
 
         $monthlyRevenue = $connection->fetchAllAssociative(
-            "SELECT to_char(event_date, 'YYYY-MM') AS month, SUM(rental_cost) AS revenue
+            "SELECT to_char(event_date, 'YYYY-MM') AS month,
+                    COALESCE(SUM(rental_cost) FILTER (WHERE status = 'Выполнен'), 0)                      AS revenue,
+                    COALESCE(SUM(rental_cost) FILTER (WHERE status IN ('В обработке', 'Забронирован')), 0) AS forecast
              FROM orders
              WHERE status <> 'Отменен'
              GROUP BY month
@@ -43,21 +45,24 @@ class DashboardController extends AbstractController
 
         foreach (array_reverse($monthlyRevenue) as $row) {
             $rev = (float) $row['revenue'];
-            if ($rev > $maxRevenue) {
-                $maxRevenue = $rev;
+            $forecast = (float) $row['forecast'];
+            $peak = $rev + $forecast; // stacked height for scale
+            if ($peak > $maxRevenue) {
+                $maxRevenue = $peak;
             }
             $chartData[] = [
-                'month' => $row['month'],
-                'revenue' => $rev
+                'month'    => $row['month'],
+                'revenue'  => $rev,
+                'forecast' => $forecast,
             ];
         }
 
         return $this->render('dashboard/index.html.twig', [
-            'summary' => $orders->getSummary(),
-            'upcoming' => $upcoming,
-            'logs' => $logs,
-            'chart_data' => $chartData,
-            'max_revenue' => $maxRevenue > 0 ? $maxRevenue : 1, // Prevent division by zero
+            'summary'     => $orders->getSummary(),
+            'upcoming'    => $upcoming,
+            'logs'        => $logs,
+            'chart_data'  => $chartData,
+            'max_revenue' => $maxRevenue > 0 ? $maxRevenue : 1,
         ]);
     }
 }

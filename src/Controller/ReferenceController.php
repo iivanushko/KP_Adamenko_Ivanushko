@@ -173,6 +173,10 @@ class ReferenceController extends AbstractController
             $this->addFlash('danger', $errors->format($exception));
         }
 
-        return new RedirectResponse($request->headers->get('referer') ?: $this->generateUrl($fallbackRoute));
+        $redirect = $request->request->get('_redirect')
+            ?: $request->headers->get('referer')
+            ?: $this->generateUrl($fallbackRoute);
+
+        return new RedirectResponse($redirect);
     }
 }

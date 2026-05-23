@@ -286,25 +286,32 @@ JOIN Dish d ON d.dish_name = seed.dish_name
 ON CONFLICT (dish_id, order_id) DO UPDATE
 SET serving_number = EXCLUDED.serving_number;
 
-WITH seeded_orders AS (
-    SELECT o.order_id
-    FROM Orders o
-    JOIN Client c ON c.client_id = o.client_id
-    WHERE (c.client_full_name, o.event_date, o.event_type) IN (
-        ('Смирнов Павел Александрович', (CURRENT_DATE - INTERVAL '5 days')::DATE, 'Свадьба'),
-        ('Волкова Екатерина Олеговна', (CURRENT_DATE + INTERVAL '5 days')::DATE, 'Корпоратив'),
-        ('Кузнецова Анна Викторовна', (CURRENT_DATE - INTERVAL '35 days')::DATE, 'Свадьба'),
-        ('Морозов Дмитрий Игоревич', (CURRENT_DATE - INTERVAL '22 days')::DATE, 'Корпоратив'),
-        ('Соколова Ирина Павловна', (CURRENT_DATE - INTERVAL '14 days')::DATE, 'День рождения'),
-        ('Лебедева Марина Андреевна', (CURRENT_DATE - INTERVAL '2 days')::DATE, 'Банкет'),
-        ('Егоров Максим Олегович', CURRENT_DATE, 'Банкет'),
-        ('Федорова Алиса Романовна', (CURRENT_DATE + INTERVAL '3 days')::DATE, 'Свадьба'),
-        ('Андреев Кирилл Михайлович', (CURRENT_DATE + INTERVAL '7 days')::DATE, 'Фуршет'),
-        ('Зайцева Полина Ильинична', (CURRENT_DATE + INTERVAL '10 days')::DATE, 'Корпоратив'),
-        ('Комаров Владислав Денисович', (CURRENT_DATE + INTERVAL '16 days')::DATE, 'День рождения'),
-        ('Григорьева Наталья Евгеньевна', (CURRENT_DATE + INTERVAL '25 days')::DATE, 'Банкет'),
-        ('Белова Дарья Константиновна', (CURRENT_DATE + INTERVAL '40 days')::DATE, 'Свадьба')
-    )
+WITH seed_keys(client_name, event_date, event_type) AS (
+    VALUES
+        ('Смирнов Павел Александрович',    (CURRENT_DATE - INTERVAL '5 days')::DATE,  'Свадьба'),
+        ('Волкова Екатерина Олеговна',      (CURRENT_DATE + INTERVAL '5 days')::DATE,  'Корпоратив'),
+        ('Кузнецова Анна Викторовна',       (CURRENT_DATE - INTERVAL '35 days')::DATE, 'Свадьба'),
+        ('Морозов Дмитрий Игоревич',        (CURRENT_DATE - INTERVAL '22 days')::DATE, 'Корпоратив'),
+        ('Соколова Ирина Павловна',         (CURRENT_DATE - INTERVAL '14 days')::DATE, 'День рождения'),
+        ('Лебедева Марина Андреевна',       (CURRENT_DATE - INTERVAL '2 days')::DATE,  'Банкет'),
+        ('Егоров Максим Олегович',          CURRENT_DATE::DATE,                        'Банкет'),
+        ('Федорова Алиса Романовна',        (CURRENT_DATE + INTERVAL '3 days')::DATE,  'Свадьба'),
+        ('Андреев Кирилл Михайлович',       (CURRENT_DATE + INTERVAL '7 days')::DATE,  'Фуршет'),
+        ('Зайцева Полина Ильинична',        (CURRENT_DATE + INTERVAL '10 days')::DATE, 'Корпоратив'),
+        ('Комаров Владислав Денисович',     (CURRENT_DATE + INTERVAL '16 days')::DATE, 'День рождения'),
+        ('Григорьева Наталья Евгеньевна',   (CURRENT_DATE + INTERVAL '25 days')::DATE, 'Банкет'),
+        ('Белова Дарья Константиновна',     (CURRENT_DATE + INTERVAL '40 days')::DATE, 'Свадьба')
+),
+seeded_orders AS (
+    -- MIN(order_id) гарантирует ровно одну строку на каждый seed-ключ,
+    -- исключая чужие заказы, случайно совпавшие по (client, date, type).
+    SELECT MIN(o.order_id) AS order_id
+    FROM seed_keys sk
+    JOIN Client c ON c.client_full_name = sk.client_name
+    JOIN Orders o ON o.client_id    = c.client_id
+                 AND o.event_date   = sk.event_date
+                 AND o.event_type   = sk.event_type
+    GROUP BY c.client_id, o.event_date, o.event_type
 ),
 totals AS (
     SELECT od.order_id, SUM(od.serving_number * d.sale_price) AS total_cost
@@ -318,6 +325,8 @@ SET rental_cost = totals.total_cost
 FROM totals
 WHERE o.order_id = totals.order_id;
 
+-- Prepayment and final status are updated separately because trg_payment_status
+-- may change active orders to "Забронирован" during prepayment updates.
 WITH payments(client_name, event_offset, event_type, status, prepayment_amount) AS (
     VALUES
         ('Смирнов Павел Александрович', -5, 'Свадьба', 'Выполнен', 4470.00),
@@ -330,8 +339,27 @@ WITH payments(client_name, event_offset, event_type, status, prepayment_amount) 
         ('Григорьева Наталья Евгеньевна', 25, 'Банкет', 'Забронирован', 40500.00)
 )
 UPDATE Orders o
-SET status = payments.status,
-    prepayment_amount = payments.prepayment_amount
+SET prepayment_amount = payments.prepayment_amount
+FROM payments
+JOIN Client c ON c.client_full_name = payments.client_name
+WHERE o.client_id = c.client_id
+  AND o.event_date = (CURRENT_DATE + payments.event_offset * INTERVAL '1 day')::DATE
+  AND o.event_type = payments.event_type
+  AND o.status <> 'Отменен';
+
+WITH payments(client_name, event_offset, event_type, status) AS (
+    VALUES
+        ('Смирнов Павел Александрович', -5, 'Свадьба', 'Выполнен'),
+        ('Кузнецова Анна Викторовна', -35, 'Свадьба', 'Выполнен'),
+        ('Морозов Дмитрий Игоревич', -22, 'Корпоратив', 'Выполнен'),
+        ('Соколова Ирина Павловна', -14, 'День рождения', 'Выполнен'),
+        ('Лебедева Марина Андреевна', -2, 'Банкет', 'Выполнен'),
+        ('Федорова Алиса Романовна', 3, 'Свадьба', 'Забронирован'),
+        ('Зайцева Полина Ильинична', 10, 'Корпоратив', 'Забронирован'),
+        ('Григорьева Наталья Евгеньевна', 25, 'Банкет', 'Забронирован')
+)
+UPDATE Orders o
+SET status = payments.status
 FROM payments
 JOIN Client c ON c.client_full_name = payments.client_name
 WHERE o.client_id = c.client_id

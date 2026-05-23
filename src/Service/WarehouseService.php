@@ -21,15 +21,10 @@ class WarehouseService
         if (($filters['low'] ?? '') === '1') {
             $where[] = 's.quantity <= s.min_quantity';
         }
-        $sortMap = [
-            'product' => 'p.product_name',
-            'quantity' => 's.quantity',
-            'min' => 's.min_quantity',
-            'restock' => 's.last_restock_date',
-            'state' => 'is_low',
-        ];
-        $sort = array_key_exists((string) ($filters['sort'] ?? ''), $sortMap) ? (string) $filters['sort'] : 'state';
-        $direction = strtolower((string) ($filters['direction'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+        $orderBy = $this->buildStockOrderBy(
+            (string) ($filters['sort'] ?? ''),
+            (string) ($filters['direction'] ?? '')
+        );
 
         $whereSql = $where === [] ? '' : 'WHERE '.implode(' AND ', $where);
         $offset = max(0, ($page - 1) * $limit);
@@ -40,7 +35,7 @@ class WarehouseService
              FROM product_stock s
              JOIN product p ON p.product_id = s.product_id
              $whereSql
-             ORDER BY {$sortMap[$sort]} $direction, p.product_name
+             ORDER BY $orderBy
              LIMIT $limit OFFSET $offset",
             $params
         );
@@ -151,5 +146,20 @@ class WarehouseService
     public function suppliers(): array
     {
         return $this->connection->fetchAllAssociative('SELECT supplier_id, supplier_name FROM supplier ORDER BY supplier_name');
+    }
+
+    private function buildStockOrderBy(string $sort, string $direction): string
+    {
+        $column = match ($sort) {
+            'product' => 'p.product_name',
+            'quantity' => 's.quantity',
+            'min' => 's.min_quantity',
+            'restock' => 's.last_restock_date',
+            default => 'is_low',
+        };
+
+        $directionSql = strtolower($direction) === 'asc' ? 'ASC' : 'DESC';
+
+        return $column.' '.$directionSql.', p.product_name';
     }
 }

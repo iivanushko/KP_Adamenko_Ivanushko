@@ -27,7 +27,9 @@
     {% for client in result.items %}
       <tr>
         <td>
-          <form id="client-form-{{ client.client_id }}" method="post" action="{{ path('clients_edit', {id: client.client_id}) }}"></form>
+          <form id="client-form-{{ client.client_id }}" method="post" action="{{ path('clients_edit', {id: client.client_id}) }}">
+            <input type="hidden" name="_redirect" value="{{ path('clients_index', filters|merge({page: page})) }}">
+          </form>
           <input form="client-form-{{ client.client_id }}" name="client_full_name" value="{{ client.client_full_name }}" maxlength="100" required>
         </td>
         <td><input form="client-form-{{ client.client_id }}" name="phone_number" value="{{ client.phone_number }}" maxlength="20" pattern="[0-9]{10,15}" title="От 10 до 15 цифр" required></td>
@@ -36,6 +38,7 @@
             <button form="client-form-{{ client.client_id }}" class="btn secondary" type="submit">Сохранить</button>
             <button class="btn secondary" type="button" onclick="openModal('edit-client-{{ client.client_id }}')">Окно</button>
             <form method="post" action="{{ path('clients_delete', {id: client.client_id}) }}" onsubmit="return confirm('Удалить клиента? Если у него есть заказы, удаление будет запрещено.')">
+              <input type="hidden" name="_redirect" value="{{ path('clients_index', filters|merge({page: page})) }}">
               <button class="btn danger" type="submit">Удалить</button>
             </form>
           </div>
@@ -44,6 +47,7 @@
 
       <dialog id="edit-client-{{ client.client_id }}">
         <form method="post" action="{{ path('clients_edit', {id: client.client_id}) }}">
+          <input type="hidden" name="_redirect" value="{{ path('clients_index', filters|merge({page: page})) }}">
           <div class="modal-head">
             <h2>Редактирование клиента</h2>
             <button class="btn secondary" type="button" onclick="closeModal('edit-client-{{ client.client_id }}')">Закрыть</button>

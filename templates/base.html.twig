@@ -126,9 +126,9 @@
   <script>
     function openModal(id) { document.getElementById(id).showModal(); }
     function closeModal(id) { document.getElementById(id).close(); }
-    function addDishRow() {
+    function addDishRow(targetId) {
       const source = document.querySelector('#dish-template').content.cloneNode(true);
-      document.querySelector('#dish-lines').appendChild(source);
+      document.querySelector('#' + (targetId || 'dish-lines')).appendChild(source);
     }
     function addProductRow() {
       const source = document.querySelector('#product-template').content.cloneNode(true);
