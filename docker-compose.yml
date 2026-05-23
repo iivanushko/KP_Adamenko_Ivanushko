@@ -11,6 +11,11 @@ services:
       DATABASE_URL: pgsql://course_user:course_password@db:5432/course_db?serverVersion=16&charset=utf8
     ports:
       - "8080:80"
+    volumes:
+      - ./src:/var/www/html/src
+      - ./templates:/var/www/html/templates
+      - ./config:/var/www/html/config
+      - ./public:/var/www/html/public
 
   db:
     image: postgres:16-alpine

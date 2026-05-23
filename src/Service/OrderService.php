@@ -19,7 +19,7 @@ class OrderService
         return [
             'orders_total' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM orders'),
             'active_orders' => (int) $this->connection->fetchOne("SELECT COUNT(*) FROM orders WHERE status NOT IN ('Выполнен', 'Отменен')"),
-            'revenue' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status <> 'Отменен'"),
+            'revenue' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(rental_cost), 0) FROM orders WHERE status <> 'Отменен'"),
             'low_stock' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM product_stock WHERE quantity <= min_quantity'),
         ];
     }
@@ -32,7 +32,7 @@ class OrderService
             'date' => 'o.event_date',
             'client' => 'c.client_full_name',
             'manager' => 'm.manager_full_name',
-            'cost' => 'o.total_cost',
+            'cost' => 'o.rental_cost',
             'status' => 'o.status',
             'prepayment' => 'o.prepayment_amount',
         ];
@@ -41,7 +41,7 @@ class OrderService
         $orderBy = $sortMap[$sort].' '.$direction.', o.order_id DESC';
 
         $items = $this->connection->fetchAllAssociative(
-            "SELECT o.order_id, o.client_id, o.manager_id, o.status, o.event_date, o.total_cost, o.event_type, o.prepayment_amount, o.is_fully_paid,
+            "SELECT o.order_id, o.client_id, o.manager_id, o.status, o.event_date, o.rental_cost AS total_cost, o.event_type, o.prepayment_amount, o.is_fully_paid,
                     c.client_full_name, c.phone_number, m.manager_full_name,
                     COALESCE(string_agg(d.dish_name || ' x ' || od.serving_number, ', ' ORDER BY d.dish_name), 'Блюда не выбраны') AS dishes
              FROM orders o
@@ -67,7 +67,7 @@ class OrderService
     public function getOrder(int $id): ?array
     {
         $order = $this->connection->fetchAssociative(
-            'SELECT o.*, c.client_full_name, m.manager_full_name
+            'SELECT o.*, o.rental_cost AS total_cost, c.client_full_name, m.manager_full_name
              FROM orders o
              JOIN client c ON c.client_id = o.client_id
              JOIN manager m ON m.manager_id = o.manager_id

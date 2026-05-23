@@ -14,7 +14,7 @@ class DashboardController extends AbstractController
     public function index(OrderService $orders, Connection $connection): Response
     {
         $upcoming = $connection->fetchAllAssociative(
-            "SELECT o.event_date, o.status, o.total_cost, o.event_type, c.client_full_name
+            "SELECT o.event_date, o.status, o.rental_cost AS total_cost, o.event_type, c.client_full_name
              FROM orders o
              JOIN client c ON c.client_id = o.client_id
              WHERE o.event_date >= CURRENT_DATE AND o.status NOT IN ('Выполнен', 'Отменен')
@@ -30,7 +30,7 @@ class DashboardController extends AbstractController
         );
 
         $monthlyRevenue = $connection->fetchAllAssociative(
-            "SELECT to_char(event_date, 'YYYY-MM') AS month, SUM(total_cost) AS revenue
+            "SELECT to_char(event_date, 'YYYY-MM') AS month, SUM(rental_cost) AS revenue
              FROM orders
              WHERE status <> 'Отменен'
              GROUP BY month

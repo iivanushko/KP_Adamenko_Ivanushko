@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use RuntimeException;
 
 class ReferenceService
@@ -72,6 +73,7 @@ class ReferenceService
     {
         $where = [];
         $params = [];
+        $types = [];
         if (($filters['q'] ?? '') !== '') {
             $where[] = 'dish_name ILIKE :q';
             $params['q'] = '%'.$filters['q'].'%';
@@ -79,6 +81,7 @@ class ReferenceService
         if (($filters['active'] ?? '') !== '') {
             $where[] = 'is_active = :active';
             $params['active'] = $filters['active'] === '1';
+            $types['active'] = ParameterType::BOOLEAN;
         }
         if (($filters['seasonality'] ?? '') !== '') {
             $where[] = 'seasonality = :seasonality';
@@ -94,9 +97,10 @@ class ReferenceService
              $whereSql
              ORDER BY is_active DESC, dish_name
              LIMIT $limit OFFSET $offset",
-            $params
+            $params,
+            $types
         );
-        $total = (int) $this->connection->fetchOne("SELECT COUNT(*) FROM dish $whereSql", $params);
+        $total = (int) $this->connection->fetchOne("SELECT COUNT(*) FROM dish $whereSql", $params, $types);
 
         return ['items' => $items, 'total' => $total, 'pages' => max(1, (int) ceil($total / $limit))];
     }
@@ -108,7 +112,8 @@ class ReferenceService
             'INSERT INTO dish (dish_name, cost_price, sale_price, seasonality, is_active)
              VALUES (:name, :cost, :sale, :seasonality, :active)
              RETURNING dish_id',
-            $this->dishParams($data)
+            $this->dishParams($data),
+            ['active' => ParameterType::BOOLEAN]
         );
         $this->log('CREATE', 'Dish', $id, 'Создано блюдо из интерфейса');
     }
@@ -122,14 +127,19 @@ class ReferenceService
             'UPDATE dish
              SET dish_name = :name, cost_price = :cost, sale_price = :sale, seasonality = :seasonality, is_active = :active
              WHERE dish_id = :id',
-            $params
+            $params,
+            ['active' => ParameterType::BOOLEAN]
         );
         $this->log('UPDATE', 'Dish', $id, 'Обновлено блюдо из интерфейса');
     }
 
     public function toggleDish(int $id, bool $isActive): void
     {
-        $this->connection->executeStatement('UPDATE dish SET is_active = :active WHERE dish_id = :id', ['id' => $id, 'active' => $isActive]);
+        $this->connection->executeStatement(
+            'UPDATE dish SET is_active = :active WHERE dish_id = :id',
+            ['id' => $id, 'active' => $isActive],
+            ['active' => ParameterType::BOOLEAN]
+        );
         $this->log('UPDATE', 'Dish', $id, $isActive ? 'Блюдо включено в меню' : 'Блюдо скрыто из меню');
     }
 

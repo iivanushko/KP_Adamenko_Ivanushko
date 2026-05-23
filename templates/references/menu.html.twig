@@ -22,19 +22,15 @@
         <option value="0" {% if filters.active == '0' %}selected{% endif %}>Скрытые</option>
       </select>
     </label>
-    <label>Сезонность
-      <select name="seasonality">
-        <option value="">Все</option>
-        <option value="Всесезонное" {% if filters.seasonality == 'Всесезонное' %}selected{% endif %}>Всесезонное</option>
-        <option value="Летнее" {% if filters.seasonality == 'Летнее' %}selected{% endif %}>Летнее</option>
-        <option value="Зимнее" {% if filters.seasonality == 'Зимнее' %}selected{% endif %}>Зимнее</option>
-        <option value="Весеннее" {% if filters.seasonality == 'Весеннее' %}selected{% endif %}>Весеннее</option>
-        <option value="Осеннее" {% if filters.seasonality == 'Осеннее' %}selected{% endif %}>Осеннее</option>
-      </select>
-    </label>
     <button class="btn" type="submit">Найти</button>
     <a class="btn secondary" href="{{ path('menu_index') }}">Сброс</a>
   </form>
+
+  {# Формы редактирования и удаления вынесены за пределы таблицы, чтобы браузер не ломал DOM #}
+  {% for dish in result.items %}
+    <form id="dish-form-{{ dish.dish_id }}" method="post" action="{{ path('menu_edit', {id: dish.dish_id}) }}"></form>
+    <form id="delete-form-{{ dish.dish_id }}" method="post" action="{{ path('menu_delete', {id: dish.dish_id}) }}" onsubmit="return confirm('Удалить блюдо? Связанные рецепты и строки заказов будут затронуты правилами БД.')"></form>
+  {% endfor %}
 
   <table>
     <thead>
@@ -54,7 +50,6 @@
     {% for dish in result.items %}
       <tr>
         <td>
-          <form id="dish-form-{{ dish.dish_id }}" method="post" action="{{ path('menu_edit', {id: dish.dish_id}) }}"></form>
           <input form="dish-form-{{ dish.dish_id }}" name="dish_name" value="{{ dish.dish_name }}" maxlength="100" required>
         </td>
         <td><input form="dish-form-{{ dish.dish_id }}" name="cost_price" type="number" min="0" step="0.01" value="{{ dish.cost_price }}" required></td>
@@ -79,13 +74,18 @@
             <input form="dish-form-{{ dish.dish_id }}" type="hidden" name="is_active" value="{{ dish.is_active ? '1' : '' }}">
             <button form="dish-form-{{ dish.dish_id }}" class="btn secondary" type="submit">Сохранить</button>
             <button class="btn secondary" type="button" onclick="openModal('edit-dish-{{ dish.dish_id }}')">Окно</button>
-            <form method="post" action="{{ path('menu_delete', {id: dish.dish_id}) }}" onsubmit="return confirm('Удалить блюдо? Связанные рецепты и строки заказов будут затронуты правилами БД.')">
-              <button class="btn danger" type="submit">Удалить</button>
-            </form>
+            <button form="delete-form-{{ dish.dish_id }}" class="btn danger" type="submit">Удалить</button>
           </div>
         </td>
       </tr>
+    {% else %}
+      <tr><td colspan="9" class="muted">Блюда пока не добавлены</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
 
+  {# Диалоги вынесены за пределы <table>, чтобы не нарушать структуру DOM #}
+  {% for dish in result.items %}
       <dialog id="recipe-{{ dish.dish_id }}">
         <div class="modal-head">
           <h2>Рецептура: {{ dish.dish_name }}</h2>
@@ -152,11 +152,7 @@
           </div>
         </form>
       </dialog>
-    {% else %}
-      <tr><td colspan="9" class="muted">Блюда пока не добавлены</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+  {% endfor %}
 
   <div class="pagination">
     {% if page > 1 %}

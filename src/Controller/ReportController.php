@@ -143,7 +143,7 @@ class ReportController extends AbstractController
 
         $whereSql = 'WHERE '.implode(' AND ', $where);
         $orders = $connection->fetchAllAssociative(
-            "SELECT o.event_date, o.status, o.event_type, o.total_cost, o.prepayment_amount, o.is_fully_paid,
+            "SELECT o.event_date, o.status, o.event_type, o.rental_cost AS total_cost, o.prepayment_amount, o.is_fully_paid,
                     c.client_full_name, m.manager_full_name
              FROM orders o
              JOIN client c ON c.client_id = o.client_id
@@ -154,7 +154,7 @@ class ReportController extends AbstractController
         );
 
         $byType = $connection->fetchAllAssociative(
-            "SELECT o.event_type, COUNT(*) AS orders_count, COALESCE(SUM(o.total_cost), 0) AS revenue
+            "SELECT o.event_type, COUNT(*) AS orders_count, COALESCE(SUM(o.rental_cost), 0) AS revenue
              FROM orders o $whereSql
              GROUP BY o.event_type
              ORDER BY revenue DESC",

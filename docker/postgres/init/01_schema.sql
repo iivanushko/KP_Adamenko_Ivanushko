@@ -39,7 +39,7 @@ CREATE TABLE Orders (
     manager_id INT NOT NULL,
     client_id INT NOT NULL,
     event_date DATE NOT NULL,
-    total_cost NUMERIC(10,2) DEFAULT 0 NOT NULL,
+    rental_cost NUMERIC(10,2) DEFAULT 0 NOT NULL,
     event_type VARCHAR(50) DEFAULT 'Банкет',
     prepayment_amount NUMERIC(10, 2) DEFAULT 0.00,
     is_fully_paid BOOLEAN DEFAULT FALSE
@@ -179,13 +179,13 @@ BEGIN
         NEW.status := 'Забронирован';
     END IF;
 
-    NEW.is_fully_paid := (NEW.prepayment_amount >= NEW.total_cost AND NEW.total_cost > 0);
+    NEW.is_fully_paid := (NEW.prepayment_amount >= NEW.rental_cost AND NEW.rental_cost > 0);
 
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_payment_status BEFORE INSERT OR UPDATE OF prepayment_amount, total_cost ON Orders
+CREATE TRIGGER trg_payment_status BEFORE INSERT OR UPDATE OF prepayment_amount, rental_cost ON Orders
 FOR EACH ROW EXECUTE FUNCTION check_order_payment_status();
 
 CREATE OR REPLACE FUNCTION log_order_status_change() RETURNS TRIGGER AS $$
@@ -264,7 +264,7 @@ DECLARE
 BEGIN
     p_status := 'ERROR'; p_message := ''; p_total_cost := 0;
 
-    INSERT INTO Orders (client_id, manager_id, event_date, status, total_cost)
+    INSERT INTO Orders (client_id, manager_id, event_date, status, rental_cost)
     VALUES (p_client_id, p_manager_id, p_event_date, 'В обработке', 0)
     RETURNING order_id INTO p_order_id;
 
@@ -299,7 +299,7 @@ BEGIN
         END LOOP;
     END LOOP;
 
-    UPDATE Orders SET total_cost = p_total_cost WHERE order_id = p_order_id;
+    UPDATE Orders SET rental_cost = p_total_cost WHERE order_id = p_order_id;
 
     p_status := 'SUCCESS';
     p_message := 'Заказ успешно создан, продукты зарезервированы.';
@@ -353,6 +353,6 @@ INSERT INTO Recipe (product_id, dish_id, number_in_recipe) VALUES
 (1, 1, 0.2), (3, 1, 0.15), (4, 1, 0.05), (5, 1, 0.03),
 (6, 2, 0.3);
 
-INSERT INTO Orders (status, manager_id, client_id, event_date, total_cost, event_type, is_fully_paid) VALUES
+INSERT INTO Orders (status, manager_id, client_id, event_date, rental_cost, event_type, is_fully_paid) VALUES
 ('Выполнен', 1, 1, CURRENT_DATE - INTERVAL '5 days', 5000.00, 'Свадьба', TRUE),
 ('В обработке', 2, 2, CURRENT_DATE + INTERVAL '5 days', 7500.00, 'Корпоратив', FALSE);
