@@ -7,10 +7,11 @@
     "ext-pdo_pgsql": "*",
     "doctrine/dbal": "^4.2",
     "doctrine/doctrine-bundle": "^2.12",
-    "dompdf/dompdf": "^3.0",
+    "dompdf/dompdf": "^3.1",
     "phpoffice/phpspreadsheet": "^3.8",
     "symfony/framework-bundle": "^7.2",
     "symfony/runtime": "^7.2",
+    "symfony/security-bundle": "^8.0",
     "symfony/twig-bundle": "^7.2",
     "symfony/yaml": "^7.2"
   },
@@ -25,5 +26,8 @@
       "symfony/runtime": true
     },
     "sort-packages": true
+  },
+  "require-dev": {
+    "symfony/maker-bundle": "^1.67"
   }
 }

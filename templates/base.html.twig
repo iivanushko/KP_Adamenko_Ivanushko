@@ -11,6 +11,12 @@
     <aside class="sidebar">
       {% set route = app.request.attributes.get('_route') ?? '' %}
       <div class="brand">Кейтеринг</div>
+      {% if app.user %}
+        <div style="padding: 1rem; border-bottom: 1px solid #dee2e6; margin-bottom: 1rem;">
+            Вы вошли как <strong>{{ app.user.userIdentifier }}</strong><br>
+            <a href="{{ path('app_logout') }}" class="muted">Выйти</a>
+        </div>
+      {% endif %}
       <nav class="nav">
         <a class="{% if route == 'dashboard' %}active{% endif %}" href="{{ path('dashboard') }}">Панель</a>
         <a class="{% if route starts with 'orders_' %}active{% endif %}" href="{{ path('orders_index') }}">Банкетные заказы</a>

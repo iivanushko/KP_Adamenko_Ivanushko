@@ -27,6 +27,14 @@
         <option value="Получено" {% if filters.status == 'Получено' %}selected{% endif %}>Получено</option>
       </select>
     </label>
+    <label>Поставщик
+      <select name="supplier_id">
+        <option value="">Все</option>
+        {% for supplier in suppliers %}
+          <option value="{{ supplier.supplier_id }}" {% if filters.supplier_id == supplier.supplier_id ~ '' %}selected{% endif %}>{{ supplier.supplier_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
     <label>Поставки с <input type="date" name="date_from" value="{{ filters.date_from }}"></label>
     <label>Поставки по <input type="date" name="date_to" value="{{ filters.date_to }}"></label>
     <label class="checkline" style="margin-bottom:9px">

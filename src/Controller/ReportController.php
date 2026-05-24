@@ -59,6 +59,28 @@ class ReportController extends AbstractController
     {
         $filters = $this->profitabilityFilters($request);
         $report = $this->buildProfitabilityReport($connection, $filters);
+        $format = (string) $request->query->get('format', 'html');
+
+        if ($format === 'pdf') {
+            $html = $this->renderView('reports/profitability_pdf.html.twig', [
+                'filters' => $filters,
+                'report' => $report['items'],
+                'total_overall_profit' => $report['total_profit'],
+                'total_sold' => $report['total_sold'],
+            ]);
+            $dompdf = new Dompdf(['defaultFont' => 'DejaVu Sans']);
+            $dompdf->loadHtml($html, 'UTF-8');
+            $dompdf->setPaper('A4', 'landscape');
+            $dompdf->render();
+            return new Response($dompdf->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="profitability-report.pdf"',
+            ]);
+        }
+
+        if ($format === 'xlsx') {
+            return $this->profitabilityXlsx($report);
+        }
 
         return $this->render('reports/profitability.html.twig', [
             'filters' => $filters,
@@ -97,6 +119,7 @@ class ReportController extends AbstractController
         return $this->render('reports/warehouse.html.twig', [
             'report' => $report,
             'filters' => $filters,
+            'suppliers' => $connection->fetchAllAssociative('SELECT supplier_id, supplier_name FROM supplier ORDER BY supplier_name'),
         ]);
     }
 
@@ -118,6 +141,7 @@ class ReportController extends AbstractController
             'status' => (string) $request->query->get('status', ''),
             'date_from' => (string) $request->query->get('date_from', ''),
             'date_to' => (string) $request->query->get('date_to', ''),
+            'supplier_id' => (string) $request->query->get('supplier_id', ''),
         ];
     }
 
@@ -200,6 +224,10 @@ class ReportController extends AbstractController
 
         $requestWhere = [];
         $requestParams = [];
+        if (($filters['supplier_id'] ?? '') !== '') {
+            $requestWhere[] = 'sr.supplier_id = :supplier_id';
+            $requestParams['supplier_id'] = (int) $filters['supplier_id'];
+        }
         if ($filters['status'] !== '') {
             $requestWhere[] = 'sr.status = :status';
             $requestParams['status'] = $filters['status'];
@@ -411,6 +439,44 @@ class ReportController extends AbstractController
         }, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => 'attachment; filename="warehouse-report.xlsx"',
+        ]);
+    }
+
+    private function profitabilityXlsx(array $report): StreamedResponse
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Прибыльность');
+        $sheet->fromArray(['Блюдо', 'Категория', 'Себестоимость', 'Цена продажи', 'Прибыль с порции', 'Продано порций', 'Общая прибыль'], null, 'A1');
+
+        $rowNumber = 2;
+        foreach ($report['items'] as $item) {
+            $sheet->fromArray([
+                $item['dish_name'],
+                $item['price_category'],
+                (float) $item['cost_price'],
+                (float) $item['sale_price'],
+                (float) $item['profit'],
+                (float) $item['total_sold'],
+                (float) $item['total_profit'],
+            ], null, 'A'.$rowNumber);
+            $rowNumber++;
+        }
+
+        $rowNumber++;
+        $sheet->fromArray(['Итого', '', '', '', '', (float) $report['total_sold'], (float) $report['total_profit']], null, 'A'.$rowNumber);
+        $sheet->getStyle('A'.$rowNumber.':G'.$rowNumber)->getFont()->setBold(true);
+
+        foreach (range('A', 'G') as $column) {
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+
+        return new StreamedResponse(static function () use ($spreadsheet): void {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="profitability-report.xlsx"',
         ]);
     }
 

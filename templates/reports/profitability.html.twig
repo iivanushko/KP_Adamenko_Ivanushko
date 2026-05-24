@@ -11,6 +11,8 @@
     <div class="table-actions">
       <a class="btn ghost" href="{{ path('reports_orders') }}">Заказы</a>
       <a class="btn ghost" href="{{ path('reports_warehouse') }}">Склад и поставки</a>
+      <a class="btn secondary" href="{{ path('reports_profitability', filters|merge({format: 'pdf'})) }}">PDF</a>
+      <a class="btn secondary" href="{{ path('reports_profitability', filters|merge({format: 'xlsx'})) }}">Excel</a>
     </div>
   </div>
 
