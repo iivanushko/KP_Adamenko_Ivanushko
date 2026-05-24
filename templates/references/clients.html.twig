@@ -6,7 +6,7 @@
   <div class="topline">
     <div>
       <h1>Клиенты</h1>
-      <div class="muted">Справочник клиентов для банкетных заказов</div>
+      <div class="page-subtitle">Справочник клиентов для банкетных заказов</div>
     </div>
     <button class="btn" type="button" onclick="openModal('create-client')">Новый клиент</button>
   </div>
@@ -19,21 +19,26 @@
     <a class="btn secondary" href="{{ path('clients_index') }}">Сброс</a>
   </form>
 
-  <table>
+  <div class="table-wrap">
+  <table id="clients-table" class="sortable-table">
     <thead>
-      <tr><th>ФИО</th><th>Телефон</th><th>Действия</th></tr>
+      <tr>
+        <th data-col="0" class="sort-th">ФИО <span class="sort-icon">⇕</span></th>
+        <th data-col="1" class="sort-th">Телефон <span class="sort-icon">⇕</span></th>
+        <th>Действия</th>
+      </tr>
     </thead>
     <tbody>
     {% for client in result.items %}
       <tr>
-        <td>
+        <td data-val="{{ client.client_full_name }}">
           <form id="client-form-{{ client.client_id }}" method="post" action="{{ path('clients_edit', {id: client.client_id}) }}">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
             <input type="hidden" name="_redirect" value="{{ path('clients_index', filters|merge({page: page})) }}">
           </form>
           <input form="client-form-{{ client.client_id }}" name="client_full_name" value="{{ client.client_full_name }}" maxlength="100" required>
         </td>
-        <td><input form="client-form-{{ client.client_id }}" name="phone_number" value="{{ client.phone_number }}" maxlength="20" pattern="[0-9]{10,15}" title="От 10 до 15 цифр" required></td>
+        <td data-val="{{ client.phone_number }}"><input form="client-form-{{ client.client_id }}" name="phone_number" value="{{ client.phone_number }}" maxlength="20" pattern="[0-9]{10,15}" title="От 10 до 15 цифр" required></td>
         <td>
           <div class="table-actions">
             <button form="client-form-{{ client.client_id }}" class="btn secondary" type="submit">Сохранить</button>
@@ -70,6 +75,7 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
 
   <div class="pagination">
     {% if page > 1 %}

@@ -24,7 +24,7 @@ class MenuController extends AbstractController
         ];
 
         return $this->render('references/menu.html.twig', [
-            'result' => $references->getDishes($filters, $page, 10),
+            'result' => $references->dishes($filters, $page, 10),
             'page' => $page,
             'filters' => $filters,
             'products' => $references->products(),

@@ -39,7 +39,7 @@ class ReportService
         $byType = $this->connection->fetchAllAssociative(
             "SELECT o.event_type, SUM(o.total_cost) AS revenue
              FROM orders o
-             $whereSql AND o.status <> :cancelled
+             $whereFiltersSql AND o.status <> :cancelled
              GROUP BY o.event_type
              ORDER BY revenue DESC",
             array_merge($params, ['cancelled' => OrderService::STATUS_CANCELLED])

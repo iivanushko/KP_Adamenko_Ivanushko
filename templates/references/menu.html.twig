@@ -6,7 +6,7 @@
   <div class="topline">
     <div>
       <h1>Меню и блюда</h1>
-      <div class="muted">Блюда для заказов, цены и доступность в меню</div>
+      <div class="page-subtitle">Блюда для заказов, цены и доступность в меню</div>
     </div>
     <button class="btn" type="button" onclick="openModal('create-dish')">Новое блюдо</button>
   </div>
@@ -34,47 +34,37 @@
     <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}"></form>
   {% endfor %}
 
-  <table style="table-layout:fixed">
-    <colgroup>
-      <col style="width:22%"><!-- Блюдо -->
-      <col style="width:9%"> <!-- Себестоимость -->
-      <col style="width:9%"> <!-- Цена -->
-      <col style="width:8%"> <!-- Категория -->
-      <col style="width:9%"> <!-- Прибыль -->
-      <col style="width:11%"><!-- Сезонность -->
-      <col style="width:10%"><!-- Рецептура -->
-      <col style="width:6%"> <!-- В меню -->
-      <col style="width:16%"><!-- Действия -->
-    </colgroup>
+  <div class="table-wrap">
+  <table id="menu-table" class="sortable-table">
     <thead>
       <tr>
-        <th>Блюдо</th>
-        <th>Себестоим.</th>
-        <th>Цена</th>
-        <th>Категория</th>
-        <th>Прибыль</th>
-        <th>Сезонность</th>
-        <th>Рецептура</th>
-        <th>В меню</th>
-        <th>Действия</th>
+        <th data-col="0" class="sort-th" style="min-width:160px">Блюдо <span class="sort-icon">⇕</span></th>
+        <th data-col="1" class="sort-th" style="width:90px">Себест. <span class="sort-icon">⇕</span></th>
+        <th data-col="2" class="sort-th" style="width:80px">Цена <span class="sort-icon">⇕</span></th>
+        <th data-col="3" class="sort-th" style="width:90px">Категория <span class="sort-icon">⇕</span></th>
+        <th data-col="4" class="sort-th" style="width:100px">Прибыль <span class="sort-icon">⇕</span></th>
+        <th data-col="5" class="sort-th" style="width:100px">Сезонн. <span class="sort-icon">⇕</span></th>
+        <th style="width:100px">Рецептура</th>
+        <th style="width:60px">В меню</th>
+        <th style="width:180px">Действия</th>
       </tr>
     </thead>
     <tbody>
     {% for dish in result.items %}
       <tr>
-        <td style="overflow:hidden">
+        <td data-val="{{ dish.dish_name }}" style="min-width:160px">
           <input form="dish-form-{{ dish.dish_id }}" name="dish_name" value="{{ dish.dish_name }}" maxlength="100" required
-                 style="width:100%;max-width:none;min-width:0" title="{{ dish.dish_name }}">
+                 style="width:100%;min-width:140px;max-width:none" title="{{ dish.dish_name }}">
         </td>
-        <td><input form="dish-form-{{ dish.dish_id }}" name="cost_price" type="number" min="0" step="0.01" value="{{ dish.cost_price }}" required style="width:100%;max-width:none;min-width:0"></td>
-        <td><input form="dish-form-{{ dish.dish_id }}" name="sale_price" type="number" min="0.01" step="0.01" value="{{ dish.sale_price }}" required style="width:100%;max-width:none;min-width:0"></td>
-        <td>{{ dish.price_category }}</td>
-        <td>{{ dish.profit|number_format(2, ',', ' ') }} руб.</td>
-        <td><input form="dish-form-{{ dish.dish_id }}" name="seasonality" value="{{ dish.seasonality }}" maxlength="50"
-                   style="width:100%;max-width:none;min-width:0"></td>
+        <td data-val="{{ dish.cost_price }}"><input form="dish-form-{{ dish.dish_id }}" name="cost_price" type="number" min="0" step="0.01" value="{{ dish.cost_price }}" required style="width:75px"></td>
+        <td data-val="{{ dish.sale_price }}"><input form="dish-form-{{ dish.dish_id }}" name="sale_price" type="number" min="0.01" step="0.01" value="{{ dish.sale_price }}" required style="width:75px"></td>
+        <td data-val="{{ dish.price_category }}">{{ dish.price_category }}</td>
+        <td data-val="{{ dish.profit }}">{{ dish.profit|number_format(0, ',', ' ') }} р.</td>
+        <td data-val="{{ dish.seasonality }}"><input form="dish-form-{{ dish.dish_id }}" name="seasonality" value="{{ dish.seasonality }}" maxlength="50" style="width:90px"></td>
         <td>
-          <button class="btn secondary" type="button" onclick="openModal('recipe-{{ dish.dish_id }}')">Открыть</button>
-          <span class="muted">{{ (recipes[dish.dish_id] ?? [])|length }} поз.</span>
+          <button class="btn secondary" type="button" onclick="openModal('recipe-{{ dish.dish_id }}')"
+                  style="padding:0 8px;font-size:12px">Открыть</button>
+          <span class="muted" style="font-size:11px">{{ (recipes[dish.dish_id] ?? [])|length }} п.</span>
         </td>
         <td>
           <form method="post" action="{{ path('menu_toggle', {id: dish.dish_id}) }}">
@@ -88,9 +78,12 @@
         <td>
           <div class="table-actions">
             <input form="dish-form-{{ dish.dish_id }}" type="hidden" name="is_active" value="{{ dish.is_active ? '1' : '' }}">
-            <button form="dish-form-{{ dish.dish_id }}" class="btn secondary" type="submit">Сохранить</button>
-            <button class="btn secondary" type="button" onclick="openModal('edit-dish-{{ dish.dish_id }}')">Редактировать</button>
-            <button form="delete-form-{{ dish.dish_id }}" class="btn danger" type="submit">Удалить</button>
+            <button form="dish-form-{{ dish.dish_id }}" class="btn secondary" type="submit"
+                    style="padding:0 8px;font-size:12px">Сохр.</button>
+            <button class="btn secondary" type="button" onclick="openModal('edit-dish-{{ dish.dish_id }}')"
+                    style="padding:0 8px;font-size:12px">Ред.</button>
+            <button form="delete-form-{{ dish.dish_id }}" class="btn danger" type="submit"
+                    style="padding:0 8px;font-size:12px">Удал.</button>
           </div>
         </td>
       </tr>
@@ -99,6 +92,7 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
 
   {# Диалоги вынесены за пределы <table>, чтобы не нарушать структуру DOM #}
   {% for dish in result.items %}

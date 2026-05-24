@@ -6,7 +6,7 @@
   <div class="topline">
     <div>
       <h1>Отчет по заказам</h1>
-      <div class="muted">Отбор по периоду, статусу и типу мероприятия</div>
+      <div class="page-subtitle">Отбор по периоду, статусу и типу мероприятия</div>
     </div>
     <div class="table-actions">
       <a class="btn ghost" href="{{ path('reports_profitability') }}">Прибыльность блюд</a>
@@ -39,30 +39,35 @@
   </form>
 
   <section class="grid stats">
-    <div class="card stat"><div class="muted">Заказов</div><div class="value">{{ report.total_count }}</div></div>
-    <div class="card stat"><div class="muted">Стоимость</div><div class="value">{{ report.total_revenue|number_format(0, ',', ' ') }} руб.</div></div>
-    <div class="card stat"><div class="muted">Предоплата</div><div class="value">{{ report.total_prepayment|number_format(0, ',', ' ') }} руб.</div></div>
-    <div class="card stat"><div class="muted">К оплате</div><div class="value">{{ (report.total_revenue - report.total_prepayment)|number_format(0, ',', ' ') }} руб.</div></div>
+    <div class="card stat"><div class="stat-label">Заказов</div><div class="value">{{ report.orders|length }}</div></div>
+    <div class="card stat"><div class="stat-label">Стоимость</div><div class="value">{{ report.total_revenue|number_format(0, ',', ' ') }} руб.</div></div>
+    <div class="card stat"><div class="stat-label">Предоплата</div><div class="value">{{ report.total_prepayment|number_format(0, ',', ' ') }} руб.</div></div>
+    <div class="card stat"><div class="stat-label">К оплате</div><div class="value">{{ (report.total_revenue - report.total_prepayment)|number_format(0, ',', ' ') }} руб.</div></div>
   </section>
 
   <section class="grid two" style="margin-top:16px">
     <div class="card">
-      <h2>Выручка по типам мероприятий</h2>
-      <table>
-        <thead><tr><th>Тип</th><th>Заказов</th><th>Выручка</th><th>Диаграмма</th></tr></thead>
+      <h2 style="margin-bottom:12px">Выручка по типам мероприятий</h2>
+      <div class="table-wrap">
+      <table id="bytype-table" class="sortable-table">
+        <thead><tr>
+          <th data-col="0" class="sort-th">Тип <span class="sort-icon">⇕</span></th>
+          <th data-col="1" class="sort-th">Выручка <span class="sort-icon">⇕</span></th>
+          <th>Диаграмма</th>
+        </tr></thead>
         <tbody>
         {% for row in report.by_type %}
           <tr>
-            <td>{{ row.event_type }}</td>
-            <td>{{ row.orders_count }}</td>
-            <td>{{ row.revenue|number_format(2, ',', ' ') }} руб.</td>
-            <td><div class="bar"><span style="width: {{ row.revenue / report.max_type_revenue * 100 }}%"></span></div></td>
+            <td data-val="{{ row.event_type }}">{{ row.event_type }}</td>
+            <td data-val="{{ row.revenue }}">{{ row.revenue|number_format(0, ',', ' ') }} руб.</td>
+            <td><div class="bar"><span style="width: {{ report.max_revenue > 0 ? (row.revenue / report.max_revenue * 100)|round(1) : 0 }}%"></span></div></td>
           </tr>
         {% else %}
-          <tr><td colspan="4" class="muted">Нет данных для диаграммы</td></tr>
+          <tr><td colspan="3" class="muted">Нет данных для диаграммы</td></tr>
         {% endfor %}
         </tbody>
       </table>
+      </div>
     </div>
     <div class="card">
       <h2>Параметры отчета</h2>
@@ -73,7 +78,8 @@
   </section>
 
   <section class="card" style="margin-top:16px">
-    <h2>Заказы за период</h2>
+    <h2 style="margin-bottom:12px">Заказы за период</h2>
+    <div class="table-wrap">
     <table>
       <thead>
         <tr>
@@ -104,5 +110,6 @@
       {% endfor %}
       </tbody>
     </table>
+    </div>
   </section>
 {% endblock %}

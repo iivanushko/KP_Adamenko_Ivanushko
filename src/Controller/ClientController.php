@@ -21,7 +21,7 @@ class ClientController extends AbstractController
         $filters = ['q' => trim((string) $request->query->get('q', ''))];
 
         return $this->render('references/clients.html.twig', [
-            'result' => $references->getClients($filters, $page, 10),
+            'result' => $references->clients($filters, $page, 10),
             'page' => $page,
             'filters' => $filters,
         ]);

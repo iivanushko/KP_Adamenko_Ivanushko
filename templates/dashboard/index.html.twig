@@ -6,30 +6,40 @@
   <div class="topline">
     <div>
       <h1>Панель управления</h1>
-      <div class="muted">Оперативное состояние заказов и склада</div>
+      <div class="page-subtitle">Оперативное состояние заказов и склада</div>
     </div>
-    <a class="btn" href="{{ path('orders_index') }}">Открыть заказы</a>
+    <a class="btn" href="{{ path('orders_index') }}">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Открыть заказы
+    </a>
   </div>
 
   <section class="grid stats">
-    <div class="card stat"><div class="muted">Всего заказов</div><div class="value">{{ summary.orders_total }}</div></div>
-    <div class="card stat"><div class="muted">Активные заказы</div><div class="value">{{ summary.active_orders }}</div></div>
     <div class="card stat">
-      <div class="muted">Выручка (выполненные)</div>
-      <div class="value">{{ summary.revenue|number_format(0, ',', ' ') }} руб.</div>
+      <div class="stat-label">Всего заказов</div>
+      <div class="value">{{ summary.orders_total }}</div>
+    </div>
+    <div class="card stat">
+      <div class="stat-label">Активные заказы</div>
+      <div class="value">{{ summary.active_orders }}</div>
+    </div>
+    <div class="card stat">
+      <div class="stat-label">Выручка (выполненные)</div>
+      <div class="value">{{ summary.revenue|number_format(0, ',', ' ') }} <small style="font-size:.5em;font-weight:600">руб.</small></div>
       {% if summary.revenue_forecast > 0 %}
-        <div class="muted" style="margin-top:4px;font-size:0.8em;">
-          + {{ summary.revenue_forecast|number_format(0, ',', ' ') }} руб. прогноз
-        </div>
+        <div class="value-sub">+ {{ summary.revenue_forecast|number_format(0, ',', ' ') }} руб. прогноз</div>
       {% endif %}
     </div>
-    <div class="card stat"><div class="muted">Низкие остатки</div><div class="value">{{ summary.low_stock }}</div></div>
+    <div class="card stat">
+      <div class="stat-label">Низкие остатки</div>
+      <div class="value" style="{{ summary.low_stock > 0 ? 'color:var(--danger)' : '' }}">{{ summary.low_stock }}</div>
+    </div>
   </section>
 
-  <section class="card" style="margin-top:16px;">
-    <h2>Выручка по месяцам (последние 6 месяцев)</h2>
+  <section class="card section-gap">
+    <h2>Выручка по месяцам <small class="muted" style="font-size:.75em;font-weight:500">(последние 6 месяцев)</small></h2>
     {% if chart_data|length > 0 %}
-      <div style="position:relative;height:260px;margin-top:12px;">
+      <div style="position:relative;height:240px;margin-top:14px;">
         <canvas id="revenueChart"></canvas>
       </div>
     {% else %}
@@ -37,28 +47,39 @@
     {% endif %}
   </section>
 
-  <section class="grid two" style="margin-top:16px">
+  <section class="grid two section-gap">
     <div class="card">
-      <h2>Ближайшие мероприятия</h2>
-      <table>
-        <thead><tr><th>Дата</th><th>Клиент</th><th>Тип</th><th>Статус</th><th>Стоимость</th></tr></thead>
-        <tbody>
-        {% for order in upcoming %}
-          <tr>
-            <td>{{ order.event_date }}</td>
-            <td>{{ order.client_full_name }}</td>
-            <td>{{ order.event_type }}</td>
-            <td><span class="pill warn">{{ order.status }}</span></td>
-            <td>{{ order.total_cost|number_format(2, ',', ' ') }} руб.</td>
-          </tr>
-        {% else %}
-          <tr><td colspan="5" class="muted">Активных мероприятий пока нет</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
+      <h2 style="margin-bottom:14px">Ближайшие мероприятия</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Клиент</th>
+              <th>Тип</th>
+              <th>Статус</th>
+              <th>Стоимость</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for order in upcoming %}
+            <tr>
+              <td>{{ order.event_date }}</td>
+              <td>{{ order.client_full_name }}</td>
+              <td>{{ order.event_type }}</td>
+              <td><span class="pill warn">{{ order.status }}</span></td>
+              <td style="white-space:nowrap">{{ order.total_cost|number_format(0, ',', ' ') }} руб.</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="muted">Активных мероприятий пока нет</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
+
     <div class="card">
-      <h2>Журнал операций</h2>
+      <h2 style="margin-bottom:14px">Журнал операций</h2>
       {% set op_labels = {
         'CREATE':        'Создание',
         'UPDATE':        'Обновление',
@@ -69,25 +90,29 @@
         'NOTIFICATION':  'Уведомление',
         'SEED':          'Демо-данные'
       } %}
-      <table style="table-layout:fixed">
-        <colgroup>
-          <col style="width:140px">
-          <col style="width:110px">
-          <col>
-        </colgroup>
-        <thead><tr><th>Время</th><th>Операция</th><th>Описание</th></tr></thead>
-        <tbody>
-        {% for log in logs %}
-          <tr>
-            <td>{{ log.operation_date }}</td>
-            <td>{{ op_labels[log.operation_type] ?? log.operation_type }}</td>
-            <td title="{{ log.description }}" style="word-break:break-word">{{ log.description }}</td>
-          </tr>
-        {% else %}
-          <tr><td colspan="3" class="muted">Журнал заполнится после изменений</td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
+      <div class="table-wrap">
+        <table style="table-layout:fixed">
+          <colgroup>
+            <col style="width:130px">
+            <col style="width:110px">
+            <col>
+          </colgroup>
+          <thead>
+            <tr><th>Время</th><th>Операция</th><th>Описание</th></tr>
+          </thead>
+          <tbody>
+          {% for log in logs %}
+            <tr>
+              <td style="font-size:12px;color:var(--muted)">{{ log.operation_date }}</td>
+              <td><span class="pill">{{ op_labels[log.operation_type] ?? log.operation_type }}</span></td>
+              <td title="{{ log.description }}" style="word-break:break-word;white-space:normal;font-size:13px">{{ log.description }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="3" class="muted">Журнал заполнится после изменений</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -116,19 +141,19 @@
             {
               label: 'Выполнено',
               data: revenues,
-              backgroundColor: 'rgba(79, 175, 80, 0.85)',
-              borderColor:     'rgba(55, 140, 55, 1)',
+              backgroundColor: 'rgba(13,148,136,0.80)',
+              borderColor:     'rgba(13,148,136,1)',
               borderWidth: 1,
-              borderRadius: 4,
+              borderRadius: 5,
               stack: 'revenue'
             },
             {
               label: 'Прогноз',
               data: forecasts,
-              backgroundColor: 'rgba(255, 193, 7, 0.65)',
-              borderColor:     'rgba(200, 150, 0, 1)',
+              backgroundColor: 'rgba(217,119,6,0.55)',
+              borderColor:     'rgba(217,119,6,0.9)',
               borderWidth: 1,
-              borderRadius: 4,
+              borderRadius: 5,
               stack: 'revenue'
             }
           ]
@@ -136,16 +161,18 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          interaction: {
-            mode: 'index',
-            intersect: false
-          },
+          interaction: { mode: 'index', intersect: false },
           plugins: {
             legend: {
               position: 'top',
-              labels: { font: { size: 13 }, padding: 16 }
+              labels: { font: { size: 12, family: 'Inter' }, padding: 16, usePointStyle: true, pointStyle: 'rectRounded' }
             },
             tooltip: {
+              backgroundColor: '#0f172a',
+              titleFont: { size: 12 },
+              bodyFont: { size: 12 },
+              padding: 10,
+              cornerRadius: 8,
               callbacks: {
                 label: function(ctx) {
                   return ' ' + ctx.dataset.label + ': ' + fmtRub(ctx.parsed.y);
@@ -161,16 +188,17 @@
             x: {
               stacked: true,
               grid: { display: false },
-              ticks: { font: { size: 12 } }
+              ticks: { font: { size: 11, family: 'Inter' }, color: '#64748b' }
             },
             y: {
               stacked: true,
               beginAtZero: true,
               ticks: {
-                font: { size: 12 },
+                font: { size: 11, family: 'Inter' },
+                color: '#64748b',
                 callback: function(v) { return fmtRub(v); }
               },
-              grid: { color: 'rgba(0,0,0,0.06)' }
+              grid: { color: 'rgba(0,0,0,0.05)' }
             }
           }
         }
