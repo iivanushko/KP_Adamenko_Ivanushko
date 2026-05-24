@@ -39,6 +39,15 @@ class ReferenceService
         return ['items' => $items, 'total' => $total, 'pages' => max(1, (int) ceil($total / $limit))];
     }
 
+    /**
+     * Убирает лишние пробелы (в начале, конце, двойные внутри) из строк ФИО / названий.
+     * Не меняет регистр, не переставляет слова — порядок ФИО ответственность пользователя.
+     */
+    private function normalizeName(string $name): string
+    {
+        return implode(' ', array_filter(array_map('trim', explode(' ', $name))));
+    }
+
     public function createClient(array $data): void
     {
         $this->requireText($data['client_full_name'] ?? '', 'Укажите ФИО клиента.');
@@ -47,7 +56,7 @@ class ReferenceService
 
         $id = (int) $this->connection->fetchOne(
             'INSERT INTO client (client_full_name, phone_number) VALUES (:name, :phone) RETURNING client_id',
-            ['name' => trim((string) $data['client_full_name']), 'phone' => trim((string) $data['phone_number'])]
+            ['name' => $this->normalizeName((string) $data['client_full_name']), 'phone' => trim((string) $data['phone_number'])]
         );
         $this->log('CREATE', 'Client', $id, 'Создан клиент из интерфейса');
     }
@@ -60,7 +69,7 @@ class ReferenceService
 
         $this->connection->executeStatement(
             'UPDATE client SET client_full_name = :name, phone_number = :phone WHERE client_id = :id',
-            ['id' => $id, 'name' => trim((string) $data['client_full_name']), 'phone' => trim((string) $data['phone_number'])]
+            ['id' => $id, 'name' => $this->normalizeName((string) $data['client_full_name']), 'phone' => trim((string) $data['phone_number'])]
         );
         $this->log('UPDATE', 'Client', $id, 'Обновлен клиент из интерфейса');
     }
@@ -300,7 +309,7 @@ class ReferenceService
         $this->requireText($name, 'Укажите название записи.');
         $id = (int) $this->connection->fetchOne(
             "INSERT INTO $table ($nameColumn) VALUES (:name) RETURNING $idColumn",
-            ['name' => trim((string) $name)]
+            ['name' => $this->normalizeName((string) $name)]
         );
         $this->log('CREATE', $logTable, $id, 'Создана запись справочника из интерфейса');
     }
@@ -310,7 +319,7 @@ class ReferenceService
         $this->requireText($name, 'Укажите название записи.');
         $this->connection->executeStatement(
             "UPDATE $table SET $nameColumn = :name WHERE $idColumn = :id",
-            ['id' => $id, 'name' => trim((string) $name)]
+            ['id' => $id, 'name' => $this->normalizeName((string) $name)]
         );
         $this->log('UPDATE', $logTable, $id, 'Обновлена запись справочника из интерфейса');
     }

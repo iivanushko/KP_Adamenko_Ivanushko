@@ -17,7 +17,7 @@ class DashboardController extends AbstractController
             "SELECT o.event_date, o.status, o.total_cost, o.event_type, c.client_full_name
              FROM orders o
              JOIN client c ON c.client_id = o.client_id
-             WHERE o.event_date >= CURRENT_DATE AND o.status NOT IN ('Выполнен', 'Отменен')
+             WHERE o.event_date >= CURRENT_DATE AND o.status NOT IN ('" . OrderService::STATUS_DONE . "', '" . OrderService::STATUS_CANCELLED . "')
              ORDER BY o.event_date
              LIMIT 6"
         );
@@ -31,10 +31,10 @@ class DashboardController extends AbstractController
 
         $monthlyRevenue = $connection->fetchAllAssociative(
             "SELECT to_char(event_date, 'YYYY-MM') AS month,
-                    COALESCE(SUM(total_cost) FILTER (WHERE status = 'Выполнен'), 0)                      AS revenue,
-                    COALESCE(SUM(total_cost) FILTER (WHERE status IN ('В обработке', 'Забронирован')), 0) AS forecast
+                    COALESCE(SUM(total_cost) FILTER (WHERE status = '" . OrderService::STATUS_DONE . "'), 0)                      AS revenue,
+                    COALESCE(SUM(total_cost) FILTER (WHERE status IN ('" . OrderService::STATUS_PENDING . "', '" . OrderService::STATUS_BOOKED . "')), 0) AS forecast
              FROM orders
-             WHERE status <> 'Отменен'
+             WHERE status <> '" . OrderService::STATUS_CANCELLED . "'
              GROUP BY month
              ORDER BY month DESC
              LIMIT 6"

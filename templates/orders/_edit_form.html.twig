@@ -1,0 +1,81 @@
+{# Фрагмент формы редактирования заказа — рендерится через AJAX в единый диалог. #}
+<form method="post" action="{{ path('orders_edit', {id: order.order_id}) }}">
+  <div class="modal-head">
+    <h2>Редактирование заказа</h2>
+    <button class="btn secondary" type="button" onclick="document.getElementById('edit-order-modal').close()">Закрыть</button>
+  </div>
+  <div class="modal-body form-grid">
+    <label>Клиент
+      <select name="client_id" required>
+        {% for client in clients %}
+          <option value="{{ client.client_id }}" {% if client.client_id == order.client_id %}selected{% endif %}>{{ client.client_full_name }} · {{ client.phone_number }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Менеджер
+      <select name="manager_id" required>
+        {% for manager in managers %}
+          <option value="{{ manager.manager_id }}" {% if manager.manager_id == order.manager_id %}selected{% endif %}>{{ manager.manager_full_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Дата мероприятия <input type="date" name="event_date" value="{{ order.event_date }}" min="{{ 'now'|date('Y-m-d') }}" {% if order.status not in [STATUS_DONE, STATUS_CANCELLED] %}data-future-date{% endif %} required></label>
+    <label>Тип мероприятия
+      <select name="event_type">
+        {% for type in event_types %}
+          <option value="{{ type }}" {% if type == order.event_type %}selected{% endif %}>{{ type }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Статус
+      <select name="status">
+        {% for status in statuses %}
+          <option value="{{ status }}" {% if status == order.status %}selected{% endif %}>{{ status }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Предоплата <input type="number" min="0" step="0.01" name="prepayment_amount" value="{{ order.prepayment_amount }}"></label>
+    <div class="wide">
+      <div class="table-actions" style="justify-content:space-between;margin-bottom:8px">
+        <strong>Блюда и порции</strong>
+        {% if order.status not in [STATUS_DONE, STATUS_CANCELLED] %}
+          <button class="btn ghost" type="button" onclick="addDishRow('edit-modal-dish-lines')">Добавить блюдо</button>
+        {% endif %}
+      </div>
+      {% if order.status in [STATUS_DONE, STATUS_CANCELLED] %}
+        <div class="muted">Состав выполненных и отмененных заказов не редактируется, чтобы история и складские резервы не расходились.</div>
+      {% else %}
+        <div id="edit-modal-dish-lines" class="line-items">
+          {% for detail in order_details %}
+            <div class="line-item">
+              <select name="dish_id[]" required>
+                <option value="{{ detail.dish_id }}" selected>{{ detail.dish_name }} · текущее блюдо</option>
+                {% for dish in dishes %}
+                  {% if dish.dish_id != detail.dish_id %}
+                    <option value="{{ dish.dish_id }}">{{ dish.dish_name }} · {{ dish.sale_price|number_format(2, ',', ' ') }} руб. · {{ dish.price_category }}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+              <input name="quantity[]" type="number" min="1" step="1" value="{{ detail.serving_number|number_format(0, '.', '') }}" required>
+              <button class="btn secondary" type="button" onclick="removeLine(this)">Удалить</button>
+            </div>
+          {% else %}
+            <div class="line-item">
+              <select name="dish_id[]" required>
+                {% for dish in dishes %}
+                  <option value="{{ dish.dish_id }}">{{ dish.dish_name }} · {{ dish.sale_price|number_format(2, ',', ' ') }} руб. · {{ dish.price_category }}</option>
+                {% endfor %}
+              </select>
+              <input name="quantity[]" type="number" min="1" step="1" value="1" required>
+              <button class="btn secondary" type="button" onclick="removeLine(this)">Удалить</button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn secondary" type="button" onclick="document.getElementById('edit-order-modal').close()">Отмена</button>
+    <button class="btn" type="submit">Сохранить</button>
+  </div>
+</form>

@@ -258,7 +258,7 @@ class ReportController extends AbstractController
     {
         $joinConditions = [
             'o.order_id = od.order_id',
-            "o.status <> 'Отменен'",
+            "o.status <> '" . OrderService::STATUS_CANCELLED . "'",
             'o.event_date BETWEEN :date_from AND :date_to',
         ];
         $params = [

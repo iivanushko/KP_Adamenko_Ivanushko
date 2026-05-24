@@ -56,6 +56,25 @@ class OrderController extends AbstractController
         return $this->redirectToRoute('orders_index');
     }
 
+    #[Route('/{id}/edit-form', name: 'edit_form', methods: ['GET'])]
+    public function editForm(int $id, OrderService $orders): Response
+    {
+        $order = $orders->getOrder($id);
+        if ($order === null) {
+            return new Response('Заказ не найден', 404);
+        }
+
+        return $this->render('orders/_edit_form.html.twig', [
+            'order'        => $order,
+            'order_details'=> $orders->getOrderDetails($id),
+            'clients'      => $orders->clients(),
+            'managers'     => $orders->managers(),
+            'dishes'       => $orders->activeDishes(),
+            'statuses'     => OrderService::STATUSES,
+            'event_types'  => OrderService::EVENT_TYPES,
+        ]);
+    }
+
     #[Route('/{id}/edit', name: 'edit', methods: ['POST'])]
     public function edit(int $id, Request $request, OrderService $orders, ErrorMessageFormatter $errors): RedirectResponse
     {

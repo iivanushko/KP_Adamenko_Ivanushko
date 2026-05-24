@@ -7,7 +7,17 @@ use RuntimeException;
 
 class OrderService
 {
-    public const STATUSES = ['В обработке', 'Забронирован', 'Выполнен', 'Отменен'];
+    public const STATUS_PENDING   = 'В обработке';
+    public const STATUS_BOOKED    = 'Забронирован';
+    public const STATUS_DONE      = 'Выполнен';
+    public const STATUS_CANCELLED = 'Отменен';
+
+    public const STATUSES = [
+        self::STATUS_PENDING,
+        self::STATUS_BOOKED,
+        self::STATUS_DONE,
+        self::STATUS_CANCELLED,
+    ];
     public const EVENT_TYPES = ['Банкет', 'Свадьба', 'Корпоратив', 'День рождения', 'Фуршет'];
 
     public function __construct(private readonly Connection $connection)
@@ -18,9 +28,9 @@ class OrderService
     {
         return [
             'orders_total' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM orders'),
-            'active_orders' => (int) $this->connection->fetchOne("SELECT COUNT(*) FROM orders WHERE status NOT IN ('Выполнен', 'Отменен')"),
-            'revenue' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status = 'Выполнен'"),
-            'revenue_forecast' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status IN ('В обработке', 'Забронирован')"),
+            'active_orders' => (int) $this->connection->fetchOne("SELECT COUNT(*) FROM orders WHERE status NOT IN ('" . self::STATUS_DONE . "', '" . self::STATUS_CANCELLED . "')"),
+            'revenue' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status = '" . self::STATUS_DONE . "'"),
+            'revenue_forecast' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status IN ('" . self::STATUS_PENDING . "', '" . self::STATUS_BOOKED . "')"),
             'low_stock' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM product_stock WHERE quantity <= min_quantity'),
         ];
     }
@@ -172,7 +182,7 @@ class OrderService
             }
 
             if (array_key_exists('dish_id', $data)) {
-                if (in_array($currentStatus, ['Выполнен', 'Отменен'], true)) {
+                if (in_array($currentStatus, [self::STATUS_DONE, self::STATUS_CANCELLED], true)) {
                     throw new RuntimeException('Состав выполненного или отмененного заказа нельзя изменять.');
                 }
 

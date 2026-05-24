@@ -1,3 +1,8 @@
 twig:
   default_path: '%kernel.project_dir%/templates'
   strict_variables: false
+  globals:
+    STATUS_PENDING:   'В обработке'
+    STATUS_BOOKED:    'Забронирован'
+    STATUS_DONE:      'Выполнен'
+    STATUS_CANCELLED: 'Отменен'
