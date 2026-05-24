@@ -146,12 +146,6 @@ class OrderService
                 throw new RuntimeException($row['p_message'] ?? 'Заказ не был создан.');
             }
 
-            // Mock log entry for email notification
-            $this->connection->executeStatement(
-                "SELECT log_operation('NOTIFICATION', 'Orders', :id, 'Уведомление отправлено клиенту по email')",
-                ['id' => (int) $row['p_order_id']]
-            );
-
             return $row;
         });
     }
@@ -203,12 +197,6 @@ class OrderService
                     'status' => $status,
                     'prepayment' => (float) str_replace(',', '.', (string) $data['prepayment_amount']),
                 ]
-            );
-
-            // Mock log entry for email notification
-            $this->connection->executeStatement(
-                "SELECT log_operation('NOTIFICATION', 'Orders', :id, 'Уведомление отправлено клиенту по email')",
-                ['id' => $id]
             );
         });
     }

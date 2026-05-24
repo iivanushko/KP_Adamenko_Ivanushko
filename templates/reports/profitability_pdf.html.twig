@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    body { font-family: 'DejaVu Sans', sans-serif; font-size: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #000; padding: 4px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    h1 { font-size: 16px; margin-bottom: 5px; }
+    .filters { margin-bottom: 15px; font-size: 10px; }
+</style>
+</head>
+<body>
+    <h1>Отчет по прибыльности блюд</h1>
+    <div class="filters">
+        Период: с {{ filters.date_from }} по {{ filters.date_to }}<br>
+        {% if filters.manager_id %}Менеджер: ID {{ filters.manager_id }}<br>{% endif %}
+        {% if filters.price_category %}Категория: {{ filters.price_category }}{% endif %}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Блюдо</th>
+                <th>Категория</th>
+                <th>Себестоимость</th>
+                <th>Цена продажи</th>
+                <th>Прибыль с порции</th>
+                <th>Продано порций</th>
+                <th>Общая прибыль</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in report %}
+                <tr>
+                    <td>{{ item.dish_name }}</td>
+                    <td>{{ item.price_category }}</td>
+                    <td>{{ item.cost_price|number_format(2, ',', ' ') }}</td>
+                    <td>{{ item.sale_price|number_format(2, ',', ' ') }}</td>
+                    <td>{{ item.profit|number_format(2, ',', ' ') }}</td>
+                    <td>{{ item.total_sold }}</td>
+                    <td>{{ item.total_profit|number_format(2, ',', ' ') }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="7">Нет данных за выбранный период</td>
+                </tr>
+            {% endfor %}
+            <tr>
+                <th colspan="5">Итого</th>
+                <th>{{ total_sold }}</th>
+                <th>{{ total_overall_profit|number_format(2, ',', ' ') }}</th>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

@@ -225,11 +225,13 @@ class ReferenceService
 
     public function createManager(array $data): void
     {
+        $this->requireText($data['manager_full_name'] ?? '', 'Укажите ФИО менеджера.');
         $this->createNamed('manager', 'manager_id', 'manager_full_name', 'Manager', $data['manager_full_name'] ?? '');
     }
 
     public function updateManager(int $id, array $data): void
     {
+        $this->requireText($data['manager_full_name'] ?? '', 'Укажите ФИО менеджера.');
         $this->updateNamed('manager', 'manager_id', 'manager_full_name', 'Manager', $id, $data['manager_full_name'] ?? '');
     }
 
@@ -334,7 +336,7 @@ class ReferenceService
     {
         $cost = $this->number($data['cost_price'] ?? 0);
         $sale = $this->number($data['sale_price'] ?? 0);
-        if ($cost < 0 || $sale <= 0) {
+        if ($cost <= 0 || $sale <= 0) {
             throw new RuntimeException('Укажите корректную себестоимость и цену продажи.');
         }
 

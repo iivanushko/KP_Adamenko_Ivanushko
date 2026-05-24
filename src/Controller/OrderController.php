@@ -117,6 +117,11 @@ class OrderController extends AbstractController
     #[Route('/{id}/history', name: 'history', methods: ['GET'])]
     public function history(int $id, \Doctrine\DBAL\Connection $connection): Response
     {
+        $orderExists = (bool) $connection->fetchOne("SELECT 1 FROM orders WHERE order_id = :id", ['id' => $id]);
+        if (!$orderExists) {
+            throw $this->createNotFoundException('Заказ не найден');
+        }
+
         $logs = $connection->fetchAllAssociative(
             "SELECT operation_date, operation_type, description
              FROM operation_log

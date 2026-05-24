@@ -94,6 +94,10 @@ class WarehouseService
 
     public function createRequest(array $data): void
     {
+        if (strtotime($data['request_date']) < strtotime(date('Y-m-d'))) {
+            throw new \RuntimeException('Дата заявки не может быть в прошлом.');
+        }
+
         $products = [];
         $seen = [];
         foreach (($data['product_id'] ?? []) as $index => $productId) {
