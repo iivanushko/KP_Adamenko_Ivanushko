@@ -11,7 +11,7 @@
     "phpoffice/phpspreadsheet": "^3.8",
     "symfony/framework-bundle": "^7.2",
     "symfony/runtime": "^7.2",
-    "symfony/security-bundle": "^8.0",
+    "symfony/security-bundle": "^7.2",
     "symfony/twig-bundle": "^7.2",
     "symfony/yaml": "^7.2"
   },
