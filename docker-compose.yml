@@ -9,6 +9,8 @@ services:
       APP_ENV: dev
       APP_SECRET: course-project-secret-change-me
       DATABASE_URL: pgsql://course_user:course_password@db:5432/course_db?serverVersion=16&charset=utf8
+      ADMIN_PASSWORD: admin
+      MANAGER_PASSWORD: manager
     ports:
       - "8080:80"
     volumes:
