@@ -26,6 +26,7 @@
               <div class="table-actions">
                 <button class="btn secondary" type="button" onclick="openModal('edit-manager-{{ manager.manager_id }}')">Изменить</button>
                 <form method="post" action="{{ path('references_managers_delete', {id: manager.manager_id}) }}" onsubmit="return confirm('Удалить менеджера?')">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
                   <button class="btn danger" type="submit">Удалить</button>
                 </form>
               </div>
@@ -33,6 +34,7 @@
           </tr>
           <dialog id="edit-manager-{{ manager.manager_id }}">
             <form method="post" action="{{ path('references_managers_edit', {id: manager.manager_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
               <div class="modal-head"><h2>Менеджер</h2><button class="btn secondary" type="button" onclick="closeModal('edit-manager-{{ manager.manager_id }}')">Закрыть</button></div>
               <div class="modal-body"><label>ФИО <input name="manager_full_name" value="{{ manager.manager_full_name }}" maxlength="100" required></label></div>
               <div class="modal-foot"><button class="btn secondary" type="button" onclick="closeModal('edit-manager-{{ manager.manager_id }}')">Отмена</button><button class="btn" type="submit">Сохранить</button></div>
@@ -60,6 +62,7 @@
               <div class="table-actions">
                 <button class="btn secondary" type="button" onclick="openModal('edit-supplier-{{ supplier.supplier_id }}')">Изменить</button>
                 <form method="post" action="{{ path('references_suppliers_delete', {id: supplier.supplier_id}) }}" onsubmit="return confirm('Удалить поставщика?')">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
                   <button class="btn danger" type="submit">Удалить</button>
                 </form>
               </div>
@@ -67,6 +70,7 @@
           </tr>
           <dialog id="edit-supplier-{{ supplier.supplier_id }}">
             <form method="post" action="{{ path('references_suppliers_edit', {id: supplier.supplier_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
               <div class="modal-head"><h2>Поставщик</h2><button class="btn secondary" type="button" onclick="closeModal('edit-supplier-{{ supplier.supplier_id }}')">Закрыть</button></div>
               <div class="modal-body"><label>Название <input name="supplier_name" value="{{ supplier.supplier_name }}" maxlength="100" required></label></div>
               <div class="modal-foot"><button class="btn secondary" type="button" onclick="closeModal('edit-supplier-{{ supplier.supplier_id }}')">Отмена</button><button class="btn" type="submit">Сохранить</button></div>
@@ -97,6 +101,7 @@
             <div class="table-actions">
               <button class="btn secondary" type="button" onclick="openModal('edit-product-{{ product.product_id }}')">Изменить</button>
               <form method="post" action="{{ path('references_products_delete', {id: product.product_id}) }}" onsubmit="return confirm('Удалить продукт? Если он используется в рецептах или заявках, удаление будет запрещено.')">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
                 <button class="btn danger" type="submit">Удалить</button>
               </form>
             </div>
@@ -104,6 +109,7 @@
         </tr>
         <dialog id="edit-product-{{ product.product_id }}">
           <form method="post" action="{{ path('references_products_edit', {id: product.product_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
             <div class="modal-head"><h2>Продукт</h2><button class="btn secondary" type="button" onclick="closeModal('edit-product-{{ product.product_id }}')">Закрыть</button></div>
             <div class="modal-body"><label>Название <input name="product_name" value="{{ product.product_name }}" maxlength="100" required></label></div>
             <div class="modal-foot"><button class="btn secondary" type="button" onclick="closeModal('edit-product-{{ product.product_id }}')">Отмена</button><button class="btn" type="submit">Сохранить</button></div>
@@ -118,6 +124,7 @@
 
   <dialog id="create-manager">
     <form method="post" action="{{ path('references_managers_create') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
       <div class="modal-head"><h2>Новый менеджер</h2><button class="btn secondary" type="button" onclick="closeModal('create-manager')">Закрыть</button></div>
       <div class="modal-body"><label>ФИО <input name="manager_full_name" maxlength="100" required></label></div>
       <div class="modal-foot"><button class="btn secondary" type="button" onclick="closeModal('create-manager')">Отмена</button><button class="btn" type="submit">Создать</button></div>
@@ -126,6 +133,7 @@
 
   <dialog id="create-supplier">
     <form method="post" action="{{ path('references_suppliers_create') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
       <div class="modal-head"><h2>Новый поставщик</h2><button class="btn secondary" type="button" onclick="closeModal('create-supplier')">Закрыть</button></div>
       <div class="modal-body"><label>Название <input name="supplier_name" maxlength="100" required></label></div>
       <div class="modal-foot"><button class="btn secondary" type="button" onclick="closeModal('create-supplier')">Отмена</button><button class="btn" type="submit">Создать</button></div>
@@ -134,6 +142,7 @@
 
   <dialog id="create-product">
     <form method="post" action="{{ path('references_products_create') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
       <div class="modal-head"><h2>Новый продукт</h2><button class="btn secondary" type="button" onclick="closeModal('create-product')">Закрыть</button></div>
       <div class="modal-body form-grid">
         <label>Название <input name="product_name" maxlength="100" required></label>

@@ -1,5 +1,6 @@
 {# Фрагмент формы редактирования заказа — рендерится через AJAX в единый диалог. #}
 <form method="post" action="{{ path('orders_edit', {id: order.order_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
   <div class="modal-head">
     <h2>Редактирование заказа</h2>
     <button class="btn secondary" type="button" onclick="document.getElementById('edit-order-modal').close()">Закрыть</button>

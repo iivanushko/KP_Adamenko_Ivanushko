@@ -50,6 +50,7 @@
         </td>
         <td>
           <form class="inline-fields" method="post" action="{{ path('warehouse_stock_update', {productId: item.product_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
             <label>Остаток
               <input name="quantity" type="number" min="0" step="0.01" value="{{ item.quantity }}">
             </label>
@@ -92,6 +93,7 @@
           <td>{{ request.products ?: 'Состав не указан' }}</td>
           <td>
             <form class="inline-form" method="post" action="{{ path('warehouse_request_status', {id: request.request_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
               <select name="status" data-current="{{ request.status }}" onchange="confirmSupplyStatusChange(this)" {% if request.status == 'Получено' %}disabled{% endif %}>
                 <option value="В пути" {% if request.status == 'В пути' %}selected{% endif %}>В пути</option>
                 <option value="Получено" {% if request.status == 'Получено' %}selected{% endif %}>Получено</option>
@@ -109,6 +111,7 @@
 
   <dialog id="create-request">
     <form method="post" action="{{ path('warehouse_request_create') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
       <div class="modal-head">
         <h2>Заявка поставщику</h2>
         <button class="btn secondary" type="button" onclick="closeModal('create-request')">Закрыть</button>

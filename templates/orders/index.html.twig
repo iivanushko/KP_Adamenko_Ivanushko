@@ -93,6 +93,7 @@
         </td>
         <td>
           <form class="inline-form" method="post" action="{{ path('orders_inline', {id: order.order_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
             <input type="hidden" name="field" value="status">
             <select name="value" data-current="{{ order.status }}" onchange="confirmStatusChange(this)" {% if order.status == STATUS_CANCELLED %}disabled{% endif %}>
               {% for status in statuses %}
@@ -113,6 +114,7 @@
             {% endif %}
           {% else %}
             <form class="inline-form" method="post" action="{{ path('orders_inline', {id: order.order_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
               <input type="hidden" name="field" value="prepayment_amount">
               <input name="value" type="number" min="0" step="0.01" value="{{ order.prepayment_amount }}">
               <button class="btn secondary" type="submit">OK</button>
@@ -125,6 +127,7 @@
             <button class="btn secondary" type="button" onclick="openEditOrder({{ order.order_id }})">Изменить</button>
             {% if order.status not in [STATUS_CANCELLED, STATUS_DONE] %}
               <form method="post" action="{{ path('orders_cancel', {id: order.order_id}) }}" onsubmit="return confirm('Отменить заказ и вернуть продукты на склад?')">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
                 <button class="btn danger" type="submit">Отменить</button>
               </form>
             {% endif %}
@@ -170,6 +173,7 @@
 
   <dialog id="create-order">
     <form method="post" action="{{ path('orders_create') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
       <div class="modal-head">
         <h2>Новый банкетный заказ</h2>
         <button class="btn secondary" type="button" onclick="closeModal('create-order')">Закрыть</button>

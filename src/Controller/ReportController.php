@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Service\OrderService;
+use App\Service\ReportService;
 use Doctrine\DBAL\Connection;
 use Dompdf\Dompdf;
 use PhpOffice\PhpSpreadsheet\Chart\Chart;
@@ -23,10 +24,10 @@ use Symfony\Component\Routing\Attribute\Route;
 class ReportController extends AbstractController
 {
     #[Route('/orders', name: 'orders', methods: ['GET'])]
-    public function orders(Request $request, Connection $connection): Response
+    public function orders(Request $request, ReportService $reportService): Response
     {
         $filters = $this->filters($request);
-        $report = $this->buildReport($connection, $filters);
+        $report = $reportService->buildReport($filters);
         $format = (string) $request->query->get('format', 'html');
 
         if ($format === 'pdf') {
@@ -55,10 +56,10 @@ class ReportController extends AbstractController
     }
 
     #[Route('/profitability', name: 'profitability', methods: ['GET'])]
-    public function profitability(Request $request, Connection $connection): Response
+    public function profitability(Request $request, ReportService $reportService, Connection $connection): Response
     {
         $filters = $this->profitabilityFilters($request);
-        $report = $this->buildProfitabilityReport($connection, $filters);
+        $report = $reportService->buildProfitabilityReport($filters);
         $format = (string) $request->query->get('format', 'html');
 
         if ($format === 'pdf') {
@@ -93,10 +94,10 @@ class ReportController extends AbstractController
     }
 
     #[Route('/warehouse', name: 'warehouse', methods: ['GET'])]
-    public function warehouse(Request $request, Connection $connection): Response
+    public function warehouse(Request $request, ReportService $reportService, Connection $connection): Response
     {
         $filters = $this->warehouseFilters($request);
-        $report = $this->buildWarehouseReport($connection, $filters);
+        $report = $reportService->buildWarehouseReport($filters);
         $format = (string) $request->query->get('format', 'html');
 
         if ($format === 'pdf') {
@@ -152,179 +153,7 @@ class ReportController extends AbstractController
             'date_to' => (string) $request->query->get('date_to', date('Y-m-d')),
             'manager_id' => (string) $request->query->get('manager_id', ''),
             'price_category' => (string) $request->query->get('price_category', ''),
-        ];
-    }
-
-    private function buildReport(Connection $connection, array $filters): array
-    {
-        $where = ['o.event_date BETWEEN :date_from AND :date_to'];
-        $params = ['date_from' => $filters['date_from'], 'date_to' => $filters['date_to']];
-
-        if ($filters['status'] !== '') {
-            $where[] = 'o.status = :status';
-            $params['status'] = $filters['status'];
-        }
-        if ($filters['event_type'] !== '') {
-            $where[] = 'o.event_type = :event_type';
-            $params['event_type'] = $filters['event_type'];
-        }
-
-        $whereSql = 'WHERE '.implode(' AND ', $where);
-        $orders = $connection->fetchAllAssociative(
-            "SELECT o.event_date, o.status, o.event_type, o.total_cost, o.prepayment_amount, o.is_fully_paid,
-                    c.client_full_name, m.manager_full_name
-             FROM orders o
-             JOIN client c ON c.client_id = o.client_id
-             JOIN manager m ON m.manager_id = o.manager_id
-             $whereSql
-             ORDER BY o.event_date, c.client_full_name",
-            $params
-        );
-
-        $byType = $connection->fetchAllAssociative(
-            "SELECT o.event_type, COUNT(*) AS orders_count, COALESCE(SUM(o.total_cost), 0) AS revenue
-             FROM orders o $whereSql
-             GROUP BY o.event_type
-             ORDER BY revenue DESC",
-            $params
-        );
-
-        return [
-            'orders' => $orders,
-            'by_type' => $byType,
-            'max_type_revenue' => max([1, ...array_map(static fn (array $row): float => (float) $row['revenue'], $byType)]),
-            'total_count' => count($orders),
-            'total_revenue' => array_sum(array_map(static fn (array $row): float => (float) $row['total_cost'], $orders)),
-            'total_prepayment' => array_sum(array_map(static fn (array $row): float => (float) $row['prepayment_amount'], $orders)),
-        ];
-    }
-
-    private function buildWarehouseReport(Connection $connection, array $filters): array
-    {
-        $stockWhere = [];
-        $stockParams = [];
-        if ($filters['q'] !== '') {
-            $stockWhere[] = 'p.product_name ILIKE :q';
-            $stockParams['q'] = '%'.$filters['q'].'%';
-        }
-        if ($filters['low'] === '1') {
-            $stockWhere[] = 's.quantity <= s.min_quantity';
-        }
-        $stockWhereSql = $stockWhere === [] ? '' : 'WHERE '.implode(' AND ', $stockWhere);
-
-        $stock = $connection->fetchAllAssociative(
-            "SELECT p.product_name, s.quantity, s.min_quantity, s.last_restock_date,
-                    CASE WHEN s.quantity <= s.min_quantity THEN TRUE ELSE FALSE END AS is_low
-             FROM product_stock s
-             JOIN product p ON p.product_id = s.product_id
-             $stockWhereSql
-             ORDER BY is_low DESC, p.product_name",
-            $stockParams
-        );
-
-        $requestWhere = [];
-        $requestParams = [];
-        if (($filters['supplier_id'] ?? '') !== '') {
-            $requestWhere[] = 'sr.supplier_id = :supplier_id';
-            $requestParams['supplier_id'] = (int) $filters['supplier_id'];
-        }
-        if ($filters['status'] !== '') {
-            $requestWhere[] = 'sr.status = :status';
-            $requestParams['status'] = $filters['status'];
-        }
-        if ($filters['date_from'] !== '') {
-            $requestWhere[] = 'sr.request_date >= :date_from';
-            $requestParams['date_from'] = $filters['date_from'];
-        }
-        if ($filters['date_to'] !== '') {
-            $requestWhere[] = 'sr.request_date <= :date_to';
-            $requestParams['date_to'] = $filters['date_to'];
-        }
-        $requestWhereSql = $requestWhere === [] ? '' : 'WHERE '.implode(' AND ', $requestWhere);
-
-        $requests = $connection->fetchAllAssociative(
-            "SELECT sr.request_date, sr.status, s.supplier_name, m.manager_full_name,
-                    COALESCE(SUM(rd.products_number), 0) AS total_products,
-                    COALESCE(string_agg(p.product_name || ' x ' || rd.products_number, ', ' ORDER BY p.product_name), '') AS products
-             FROM supplier_request sr
-             JOIN supplier s ON s.supplier_id = sr.supplier_id
-             JOIN manager m ON m.manager_id = sr.manager_id
-             LEFT JOIN request_details rd ON rd.request_id = sr.request_id
-             LEFT JOIN product p ON p.product_id = rd.product_id
-             $requestWhereSql
-             GROUP BY sr.request_id, s.supplier_name, m.manager_full_name
-             ORDER BY sr.request_date DESC, sr.request_id DESC
-             LIMIT 30",
-            $requestParams
-        );
-
-        $bySupplier = $connection->fetchAllAssociative(
-            "SELECT s.supplier_name, COUNT(sr.request_id) AS requests_count, COALESCE(SUM(rd.products_number), 0) AS total_products
-             FROM supplier s
-             LEFT JOIN supplier_request sr ON sr.supplier_id = s.supplier_id
-             LEFT JOIN request_details rd ON rd.request_id = sr.request_id
-             ".($requestWhere === [] ? '' : 'WHERE '.implode(' AND ', array_map(static fn (string $clause): string => str_replace('sr.', 'sr.', $clause), $requestWhere)))."
-             GROUP BY s.supplier_id, s.supplier_name
-             ORDER BY total_products DESC, s.supplier_name",
-            $requestParams
-        );
-
-        return [
-            'stock' => $stock,
-            'requests' => $requests,
-            'by_supplier' => $bySupplier,
-            'max_supplier_total' => max([1, ...array_map(static fn (array $row): float => (float) $row['total_products'], $bySupplier)]),
-            'products_count' => count($stock),
-            'low_count' => count(array_filter($stock, static fn (array $row): bool => (bool) $row['is_low'])),
-            'total_quantity' => array_sum(array_map(static fn (array $row): float => (float) $row['quantity'], $stock)),
-            'pending_requests' => count(array_filter($requests, static fn (array $row): bool => $row['status'] !== 'Получено')),
-            'received_requests' => count(array_filter($requests, static fn (array $row): bool => $row['status'] === 'Получено')),
-        ];
-    }
-
-    private function buildProfitabilityReport(Connection $connection, array $filters): array
-    {
-        $joinConditions = [
-            'o.order_id = od.order_id',
-            "o.status <> '" . OrderService::STATUS_CANCELLED . "'",
-            'o.event_date BETWEEN :date_from AND :date_to',
-        ];
-        $params = [
-            'date_from' => $filters['date_from'],
-            'date_to' => $filters['date_to'],
-        ];
-
-        if ($filters['manager_id'] !== '') {
-            $joinConditions[] = 'o.manager_id = :manager_id';
-            $params['manager_id'] = (int) $filters['manager_id'];
-        }
-
-        $where = [];
-        if ($filters['price_category'] !== '') {
-            $where[] = 'd.price_category = :price_category';
-            $params['price_category'] = $filters['price_category'];
-        }
-
-        $whereSql = $where === [] ? '' : 'WHERE '.implode(' AND ', $where);
-        $ordersJoinSql = implode(' AND ', $joinConditions);
-
-        $items = $connection->fetchAllAssociative(
-            "SELECT d.dish_name, d.price_category, d.cost_price, d.sale_price, (d.sale_price - d.cost_price) AS profit,
-                    COALESCE(SUM(CASE WHEN o.order_id IS NOT NULL THEN od.serving_number ELSE 0 END), 0) AS total_sold,
-                    COALESCE(SUM(CASE WHEN o.order_id IS NOT NULL THEN od.serving_number ELSE 0 END) * (d.sale_price - d.cost_price), 0) AS total_profit
-             FROM dish d
-             LEFT JOIN order_details od ON od.dish_id = d.dish_id
-             LEFT JOIN orders o ON $ordersJoinSql
-             $whereSql
-             GROUP BY d.dish_id, d.dish_name, d.price_category, d.cost_price, d.sale_price
-             ORDER BY total_profit DESC, total_sold DESC, d.dish_name",
-            $params
-        );
-
-        return [
-            'items' => $items,
-            'total_profit' => array_sum(array_map(static fn (array $row): float => (float) $row['total_profit'], $items)),
-            'total_sold' => array_sum(array_map(static fn (array $row): float => (float) $row['total_sold'], $items)),
+            'only_sold' => (string) $request->query->get('only_sold', ''),
         ];
     }
 

@@ -5,8 +5,8 @@ security:
         memory_provider:
             memory:
                 users:
-                    admin: { password: '$2y$10$Ge/ugQggSuN71HhrS3amX.mI2LFQWLSrmLxJdEZKdXbJysYrbk37i', roles: ['ROLE_ADMIN'] }
-                    manager: { password: '$2y$10$7YSCnU.gfmw3nK04R1PDUOuWmGOpg7aSwjeIv8qfZAosqIYuThXd.', roles: ['ROLE_MANAGER'] }
+                    admin: { password: '%env(string:ADMIN_PASSWORD)%', roles: ['ROLE_ADMIN'] }
+                    manager: { password: '%env(string:MANAGER_PASSWORD)%', roles: ['ROLE_MANAGER'] }
     firewalls:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/

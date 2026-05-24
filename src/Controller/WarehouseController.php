@@ -2,7 +2,7 @@
 
 namespace App\Controller;
 
-use App\Service\OrderService;
+use App\Service\ReferenceService;
 use App\Service\ErrorMessageFormatter;
 use App\Service\WarehouseService;
 use Throwable;
@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class WarehouseController extends AbstractController
 {
     #[Route('', name: 'index', methods: ['GET'])]
-    public function index(Request $request, WarehouseService $warehouse, OrderService $orders): Response
+    public function index(Request $request, WarehouseService $warehouse, ReferenceService $references): Response
     {
         $page = max(1, $request->query->getInt('page', 1));
         $filters = [
@@ -33,13 +33,17 @@ class WarehouseController extends AbstractController
             'requests' => $warehouse->getRequests(),
             'products' => $warehouse->products(),
             'suppliers' => $warehouse->suppliers(),
-            'managers' => $orders->managers(),
+            'managers' => $references->managers(),
         ]);
     }
 
     #[Route('/stock/{productId}/update', name: 'stock_update', methods: ['POST'])]
     public function updateStock(int $productId, Request $request, WarehouseService $warehouse, ErrorMessageFormatter $errors): RedirectResponse
     {
+        if (!$this->isCsrfTokenValid('default', $request->request->get('_csrf_token'))) {
+            $this->addFlash('danger', 'Неверный CSRF-токен.');
+            return new RedirectResponse($request->headers->get('referer') ?: $this->generateUrl('warehouse_index'));
+        }
         try {
             $warehouse->updateStock(
                 $productId,
@@ -57,6 +61,10 @@ class WarehouseController extends AbstractController
     #[Route('/request/create', name: 'request_create', methods: ['POST'])]
     public function createRequest(Request $request, WarehouseService $warehouse, ErrorMessageFormatter $errors): RedirectResponse
     {
+        if (!$this->isCsrfTokenValid('default', $request->request->get('_csrf_token'))) {
+            $this->addFlash('danger', 'Неверный CSRF-токен.');
+            return new RedirectResponse($request->headers->get('referer') ?: $this->generateUrl('warehouse_index'));
+        }
         try {
             $warehouse->createRequest($request->request->all());
             $this->addFlash('success', 'Заявка поставщику создана.');
@@ -70,6 +78,10 @@ class WarehouseController extends AbstractController
     #[Route('/request/{id}/status', name: 'request_status', methods: ['POST'])]
     public function updateRequestStatus(int $id, Request $request, WarehouseService $warehouse, ErrorMessageFormatter $errors): RedirectResponse
     {
+        if (!$this->isCsrfTokenValid('default', $request->request->get('_csrf_token'))) {
+            $this->addFlash('danger', 'Неверный CSRF-токен.');
+            return new RedirectResponse($request->headers->get('referer') ?: $this->generateUrl('warehouse_index'));
+        }
         try {
             $warehouse->updateRequestStatus($id, (string) $request->request->get('status'));
             $this->addFlash('success', 'Статус заявки поставщику обновлен.');

@@ -28,6 +28,7 @@
       <tr>
         <td>
           <form id="client-form-{{ client.client_id }}" method="post" action="{{ path('clients_edit', {id: client.client_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
             <input type="hidden" name="_redirect" value="{{ path('clients_index', filters|merge({page: page})) }}">
           </form>
           <input form="client-form-{{ client.client_id }}" name="client_full_name" value="{{ client.client_full_name }}" maxlength="100" required>
@@ -38,6 +39,7 @@
             <button form="client-form-{{ client.client_id }}" class="btn secondary" type="submit">Сохранить</button>
             <button class="btn secondary" type="button" onclick="openModal('edit-client-{{ client.client_id }}')">Редактировать</button>
             <form method="post" action="{{ path('clients_delete', {id: client.client_id}) }}" onsubmit="return confirm('Удалить клиента? Если у него есть заказы, удаление будет запрещено.')">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
               <input type="hidden" name="_redirect" value="{{ path('clients_index', filters|merge({page: page})) }}">
               <button class="btn danger" type="submit">Удалить</button>
             </form>
@@ -47,6 +49,7 @@
 
       <dialog id="edit-client-{{ client.client_id }}">
         <form method="post" action="{{ path('clients_edit', {id: client.client_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
           <input type="hidden" name="_redirect" value="{{ path('clients_index', filters|merge({page: page})) }}">
           <div class="modal-head">
             <h2>Редактирование клиента</h2>
@@ -83,6 +86,7 @@
 
   <dialog id="create-client">
     <form method="post" action="{{ path('clients_create') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
       <div class="modal-head">
         <h2>Новый клиент</h2>
         <button class="btn secondary" type="button" onclick="closeModal('create-client')">Закрыть</button>
