@@ -147,7 +147,7 @@ class ReportController extends AbstractController
 
         $whereSql = 'WHERE '.implode(' AND ', $where);
         $orders = $connection->fetchAllAssociative(
-            "SELECT o.event_date, o.status, o.event_type, o.rental_cost AS total_cost, o.prepayment_amount, o.is_fully_paid,
+            "SELECT o.event_date, o.status, o.event_type, o.total_cost, o.prepayment_amount, o.is_fully_paid,
                     c.client_full_name, m.manager_full_name
              FROM orders o
              JOIN client c ON c.client_id = o.client_id
@@ -158,7 +158,7 @@ class ReportController extends AbstractController
         );
 
         $byType = $connection->fetchAllAssociative(
-            "SELECT o.event_type, COUNT(*) AS orders_count, COALESCE(SUM(o.rental_cost), 0) AS revenue
+            "SELECT o.event_type, COUNT(*) AS orders_count, COALESCE(SUM(o.total_cost), 0) AS revenue
              FROM orders o $whereSql
              GROUP BY o.event_type
              ORDER BY revenue DESC",
@@ -281,14 +281,14 @@ class ReportController extends AbstractController
         $ordersJoinSql = implode(' AND ', $joinConditions);
 
         $items = $connection->fetchAllAssociative(
-            "SELECT d.dish_name, d.price_category, d.cost_price, d.sale_price, d.profit,
+            "SELECT d.dish_name, d.price_category, d.cost_price, d.sale_price, (d.sale_price - d.cost_price) AS profit,
                     COALESCE(SUM(CASE WHEN o.order_id IS NOT NULL THEN od.serving_number ELSE 0 END), 0) AS total_sold,
-                    COALESCE(SUM(CASE WHEN o.order_id IS NOT NULL THEN od.serving_number ELSE 0 END) * d.profit, 0) AS total_profit
+                    COALESCE(SUM(CASE WHEN o.order_id IS NOT NULL THEN od.serving_number ELSE 0 END) * (d.sale_price - d.cost_price), 0) AS total_profit
              FROM dish d
              LEFT JOIN order_details od ON od.dish_id = d.dish_id
              LEFT JOIN orders o ON $ordersJoinSql
              $whereSql
-             GROUP BY d.dish_id, d.dish_name, d.price_category, d.cost_price, d.sale_price, d.profit
+             GROUP BY d.dish_id, d.dish_name, d.price_category, d.cost_price, d.sale_price
              ORDER BY total_profit DESC, total_sold DESC, d.dish_name",
             $params
         );

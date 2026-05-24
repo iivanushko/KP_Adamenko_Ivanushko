@@ -28,6 +28,8 @@ class WarehouseService
 
         $whereSql = $where === [] ? '' : 'WHERE '.implode(' AND ', $where);
         $offset = max(0, ($page - 1) * $limit);
+        $limitInt = max(1, (int) $limit);
+        $offsetInt = max(0, (int) $offset);
 
         $items = $this->connection->fetchAllAssociative(
             "SELECT p.product_id, p.product_name, s.quantity, s.min_quantity, s.last_restock_date,
@@ -36,7 +38,7 @@ class WarehouseService
              JOIN product p ON p.product_id = s.product_id
              $whereSql
              ORDER BY $orderBy
-             LIMIT $limit OFFSET $offset",
+             LIMIT $limitInt OFFSET $offsetInt",
             $params
         );
         $total = (int) $this->connection->fetchOne(

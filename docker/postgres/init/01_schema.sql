@@ -18,7 +18,6 @@ CREATE TABLE Dish (
     cost_price NUMERIC(10,2) NOT NULL,
     sale_price NUMERIC(10,2) NOT NULL,
     price_category VARCHAR(20),
-    profit NUMERIC(10,2),
     seasonality VARCHAR(50) DEFAULT 'Всесезонное',
     is_active BOOLEAN DEFAULT TRUE
 );
@@ -39,7 +38,7 @@ CREATE TABLE Orders (
     manager_id INT NOT NULL,
     client_id INT NOT NULL,
     event_date DATE NOT NULL,
-    rental_cost NUMERIC(10,2) DEFAULT 0 NOT NULL,
+    total_cost NUMERIC(10,2) DEFAULT 0 NOT NULL,
     event_type VARCHAR(50) DEFAULT 'Банкет',
     prepayment_amount NUMERIC(10, 2) DEFAULT 0.00,
     is_fully_paid BOOLEAN DEFAULT FALSE
@@ -62,7 +61,7 @@ CREATE TABLE Recipe (
 CREATE TABLE Supplier_Request (
     request_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     request_date DATE NOT NULL,
-    created_at DATE DEFAULT CURRENT_DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     manager_id INT NOT NULL,
     supplier_id INT NOT NULL,
     status VARCHAR(50) DEFAULT 'В пути' NOT NULL,
@@ -88,7 +87,7 @@ CREATE TABLE operation_log (
 
 CREATE TABLE product_stock (
     product_id INT PRIMARY KEY,
-    quantity NUMERIC(10,2) NOT NULL DEFAULT 0,
+    quantity NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (quantity >= 0),
     min_quantity NUMERIC(10,2) NOT NULL DEFAULT 10,
     last_restock_date DATE
 );
@@ -116,6 +115,10 @@ ALTER TABLE product_stock ADD CONSTRAINT FK_STOCK_PRODUCT FOREIGN KEY (product_i
 ALTER TABLE reserved_products ADD CONSTRAINT FK_RES_ORDER FOREIGN KEY (order_id) REFERENCES Orders (order_id) ON DELETE CASCADE;
 ALTER TABLE reserved_products ADD CONSTRAINT FK_RES_PRODUCT FOREIGN KEY (product_id) REFERENCES Product (product_id) ON DELETE CASCADE;
 
+CREATE INDEX idx_orders_event_date ON Orders (event_date);
+CREATE INDEX idx_orders_status     ON Orders (status);
+CREATE INDEX idx_orders_client_id  ON Orders (client_id);
+
 CREATE OR REPLACE FUNCTION log_operation(p_operation_type VARCHAR, p_table_name VARCHAR, p_record_id INT, p_description TEXT)
 RETURNS VOID AS $$
 BEGIN
@@ -137,15 +140,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_set_price_category BEFORE INSERT OR UPDATE OF sale_price ON Dish
 FOR EACH ROW EXECUTE FUNCTION set_dish_price_category();
 
-CREATE OR REPLACE FUNCTION calculate_dish_profit() RETURNS TRIGGER AS $$
-BEGIN
-    NEW.profit := NEW.sale_price - NEW.cost_price;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_calculate_profit BEFORE INSERT OR UPDATE OF cost_price, sale_price ON Dish
-FOR EACH ROW EXECUTE FUNCTION calculate_dish_profit();
+-- profit вычисляется в запросах как (sale_price - cost_price), хранимое поле удалено.
 
 CREATE OR REPLACE FUNCTION check_order_date_and_status() RETURNS TRIGGER AS $$
 BEGIN
@@ -175,17 +170,21 @@ FOR EACH ROW EXECUTE FUNCTION prevent_edit_cancelled_order();
 
 CREATE OR REPLACE FUNCTION check_order_payment_status() RETURNS TRIGGER AS $$
 BEGIN
-    IF NEW.prepayment_amount > 0 AND (TG_OP = 'INSERT' OR OLD.status = 'В обработке') THEN
+    -- Менять статус на «Забронирован» только при реальном изменении предоплаты,
+    -- а не при обновлении total_cost (seed-скрипты, пересчёт состава).
+    IF NEW.prepayment_amount > 0
+       AND (TG_OP = 'INSERT' OR (OLD.prepayment_amount IS DISTINCT FROM NEW.prepayment_amount AND OLD.status = 'В обработке'))
+    THEN
         NEW.status := 'Забронирован';
     END IF;
 
-    NEW.is_fully_paid := (NEW.prepayment_amount >= NEW.rental_cost AND NEW.rental_cost > 0);
+    NEW.is_fully_paid := (NEW.prepayment_amount >= NEW.total_cost AND NEW.total_cost > 0);
 
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_payment_status BEFORE INSERT OR UPDATE OF prepayment_amount, rental_cost ON Orders
+CREATE TRIGGER trg_payment_status BEFORE INSERT OR UPDATE OF prepayment_amount, total_cost ON Orders
 FOR EACH ROW EXECUTE FUNCTION check_order_payment_status();
 
 CREATE OR REPLACE FUNCTION log_order_status_change() RETURNS TRIGGER AS $$
@@ -293,7 +292,7 @@ CREATE OR REPLACE PROCEDURE create_complex_order_full(
     IN p_dishes JSONB,
     OUT p_order_id INT,
     OUT p_total_cost NUMERIC,
-    OUT p_status VARCHAR(20),
+    OUT p_status VARCHAR(20),
     OUT p_message TEXT
 )
 LANGUAGE plpgsql AS $$
@@ -303,7 +302,7 @@ DECLARE
 BEGIN
     p_status := 'ERROR'; p_message := ''; p_total_cost := 0;
 
-    INSERT INTO Orders (client_id, manager_id, event_date, event_type, status, rental_cost)
+    INSERT INTO Orders (client_id, manager_id, event_date, event_type, status, total_cost)
     VALUES (p_client_id, p_manager_id, p_event_date, p_event_type, 'В обработке', 0)
     RETURNING order_id INTO p_order_id;
 
@@ -338,7 +337,7 @@ BEGIN
         END LOOP;
     END LOOP;
 
-    UPDATE Orders SET rental_cost = p_total_cost WHERE order_id = p_order_id;
+    UPDATE Orders SET total_cost = p_total_cost WHERE order_id = p_order_id;
 
     p_status := 'SUCCESS';
     p_message := 'Заказ успешно создан, продукты зарезервированы.';
@@ -392,6 +391,6 @@ INSERT INTO Recipe (product_id, dish_id, number_in_recipe) VALUES
 (1, 1, 0.2), (3, 1, 0.15), (4, 1, 0.05), (5, 1, 0.03),
 (6, 2, 0.3);
 
-INSERT INTO Orders (status, manager_id, client_id, event_date, rental_cost, event_type, is_fully_paid) VALUES
+INSERT INTO Orders (status, manager_id, client_id, event_date, total_cost, event_type, is_fully_paid) VALUES
 ('Выполнен', 1, 1, CURRENT_DATE - INTERVAL '5 days', 5000.00, 'Свадьба', TRUE),
 ('В обработке', 2, 2, CURRENT_DATE + INTERVAL '5 days', 7500.00, 'Корпоратив', FALSE);

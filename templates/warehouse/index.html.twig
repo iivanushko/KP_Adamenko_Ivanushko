@@ -68,11 +68,14 @@
 
   <div class="pagination">
     {% if page > 1 %}
-      <a href="{{ path('warehouse_index', filters|merge({page: page - 1})) }}">Назад</a>
+      <a href="{{ path('warehouse_index', filters|merge({page: 1})) }}" title="В начало">&#171; В начало</a>
+      <a href="{{ path('warehouse_index', filters|merge({page: page - 1})) }}">&#8249; Назад</a>
     {% endif %}
-    <span>Страница {{ page }} из {{ result.pages }}</span>
+    <span>Стр. {{ page }} из {{ result.pages }}</span>
+    <span class="pg-info">Всего: {{ result.total }} зап.</span>
     {% if page < result.pages %}
-      <a href="{{ path('warehouse_index', filters|merge({page: page + 1})) }}">Вперед</a>
+      <a href="{{ path('warehouse_index', filters|merge({page: page + 1})) }}">Вперед &#8250;</a>
+      <a href="{{ path('warehouse_index', filters|merge({page: result.pages})) }}" title="В конец">В конец &#187;</a>
     {% endif %}
   </div>
 

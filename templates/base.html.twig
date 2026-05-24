@@ -53,6 +53,7 @@
     .table-actions { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; white-space: nowrap; }
     .table-actions form { display: contents; }
     td input:not([type="checkbox"]) { width: 100%; min-width: 80px; max-width: 140px; }
+    td input[name="client_full_name"] { max-width: none; }
     td input[name="dish_name"] { max-width: 180px; }
     td input[name="seasonality"] { max-width: 110px; }
     td:last-child { white-space: nowrap; }
@@ -70,8 +71,10 @@
     .flash { padding: 12px 14px; border-radius: 8px; margin-bottom: 14px; border: 1px solid; }
     .flash.success { background: #ecfdf5; border-color: #86efac; }
     .flash.danger { background: #fef2f2; border-color: #fecaca; }
-    .pagination { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
+    .pagination { display: flex; gap: 8px; margin-top: 14px; align-items: center; flex-wrap: wrap; }
     .pagination a, .pagination span { padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line); background: white; }
+    .pagination a.disabled { pointer-events: none; opacity: .4; }
+    .pagination .pg-info { border: 0; background: transparent; color: var(--muted); font-size: 13px; padding: 8px 2px; }
     dialog { border: 0; border-radius: 8px; padding: 0; width: min(760px, calc(100vw - 30px)); box-shadow: 0 24px 80px rgba(15, 23, 42, .3); }
     dialog::backdrop { background: rgba(15, 23, 42, .45); }
     .modal-head, .modal-foot { padding: 16px 18px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 10px; }

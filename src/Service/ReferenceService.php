@@ -23,13 +23,15 @@ class ReferenceService
 
         $whereSql = $where === [] ? '' : 'WHERE '.implode(' AND ', $where);
         $offset = max(0, ($page - 1) * $limit);
+        $limitInt = max(1, (int) $limit);
+        $offsetInt = max(0, (int) $offset);
 
         $items = $this->connection->fetchAllAssociative(
             "SELECT client_id, client_full_name, phone_number
              FROM client
              $whereSql
              ORDER BY client_full_name
-             LIMIT $limit OFFSET $offset",
+             LIMIT $limitInt OFFSET $offsetInt",
             $params
         );
         $total = (int) $this->connection->fetchOne("SELECT COUNT(*) FROM client $whereSql", $params);
@@ -90,13 +92,15 @@ class ReferenceService
 
         $whereSql = $where === [] ? '' : 'WHERE '.implode(' AND ', $where);
         $offset = max(0, ($page - 1) * $limit);
+        $limitInt = max(1, (int) $limit);
+        $offsetInt = max(0, (int) $offset);
 
         $items = $this->connection->fetchAllAssociative(
-            "SELECT dish_id, dish_name, cost_price, sale_price, price_category, profit, seasonality, is_active
+            "SELECT dish_id, dish_name, cost_price, sale_price, price_category, (sale_price - cost_price) AS profit, seasonality, is_active
              FROM dish
              $whereSql
              ORDER BY is_active DESC, dish_name
-             LIMIT $limit OFFSET $offset",
+             LIMIT $limitInt OFFSET $offsetInt",
             $params,
             $types
         );

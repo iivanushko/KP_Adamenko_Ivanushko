@@ -186,7 +186,7 @@ JOIN Dish d ON d.dish_name = seed.dish_name
 ON CONFLICT (product_id, dish_id) DO UPDATE
 SET number_in_recipe = EXCLUDED.number_in_recipe;
 
-WITH seed_orders(client_name, manager_name, status, event_offset, event_type, rental_cost) AS (
+WITH seed_orders(client_name, manager_name, status, event_offset, event_type, total_cost) AS (
     VALUES
         ('Смирнов Павел Александрович', 'Иванов Алексей Петрович', 'Выполнен', -5, 'Свадьба', 4470.00),
         ('Волкова Екатерина Олеговна', 'Петрова Мария Сергеевна', 'В обработке', 5, 'Корпоратив', 7540.00),
@@ -203,9 +203,9 @@ WITH seed_orders(client_name, manager_name, status, event_offset, event_type, re
         ('Григорьева Наталья Евгеньевна', 'Соколова Елена Викторовна', 'Забронирован', 25, 'Банкет', 40500.00),
         ('Белова Дарья Константиновна', 'Кузьмин Дмитрий Андреевич', 'В обработке', 40, 'Свадьба', 68720.00)
 )
-INSERT INTO Orders (status, manager_id, client_id, event_date, rental_cost, event_type, prepayment_amount)
+INSERT INTO Orders (status, manager_id, client_id, event_date, total_cost, event_type, prepayment_amount)
 SELECT so.status, m.manager_id, c.client_id, (CURRENT_DATE + so.event_offset * INTERVAL '1 day')::DATE,
-       so.rental_cost, so.event_type, 0
+       so.total_cost, so.event_type, 0
 FROM seed_orders so
 JOIN Client c ON c.client_full_name = so.client_name
 JOIN Manager m ON m.manager_full_name = so.manager_name
@@ -321,12 +321,13 @@ totals AS (
     GROUP BY od.order_id
 )
 UPDATE Orders o
-SET rental_cost = totals.total_cost
+SET total_cost = totals.total_cost
 FROM totals
 WHERE o.order_id = totals.order_id;
 
--- Prepayment and final status are updated separately because trg_payment_status
--- may change active orders to "Забронирован" during prepayment updates.
+-- Предоплата и статус обновляются одним шагом. Триггер trg_payment_status
+-- теперь меняет статус на «Забронирован» только при реальном изменении предоплаты,
+-- поэтому побочный эффект при обновлении total_cost исключён.
 WITH payments(client_name, event_offset, event_type, status, prepayment_amount) AS (
     VALUES
         ('Смирнов Павел Александрович', -5, 'Свадьба', 'Выполнен', 4470.00),
@@ -339,27 +340,8 @@ WITH payments(client_name, event_offset, event_type, status, prepayment_amount) 
         ('Григорьева Наталья Евгеньевна', 25, 'Банкет', 'Забронирован', 40500.00)
 )
 UPDATE Orders o
-SET prepayment_amount = payments.prepayment_amount
-FROM payments
-JOIN Client c ON c.client_full_name = payments.client_name
-WHERE o.client_id = c.client_id
-  AND o.event_date = (CURRENT_DATE + payments.event_offset * INTERVAL '1 day')::DATE
-  AND o.event_type = payments.event_type
-  AND o.status <> 'Отменен';
-
-WITH payments(client_name, event_offset, event_type, status) AS (
-    VALUES
-        ('Смирнов Павел Александрович', -5, 'Свадьба', 'Выполнен'),
-        ('Кузнецова Анна Викторовна', -35, 'Свадьба', 'Выполнен'),
-        ('Морозов Дмитрий Игоревич', -22, 'Корпоратив', 'Выполнен'),
-        ('Соколова Ирина Павловна', -14, 'День рождения', 'Выполнен'),
-        ('Лебедева Марина Андреевна', -2, 'Банкет', 'Выполнен'),
-        ('Федорова Алиса Романовна', 3, 'Свадьба', 'Забронирован'),
-        ('Зайцева Полина Ильинична', 10, 'Корпоратив', 'Забронирован'),
-        ('Григорьева Наталья Евгеньевна', 25, 'Банкет', 'Забронирован')
-)
-UPDATE Orders o
-SET status = payments.status
+SET prepayment_amount = payments.prepayment_amount,
+    status = payments.status
 FROM payments
 JOIN Client c ON c.client_full_name = payments.client_name
 WHERE o.client_id = c.client_id

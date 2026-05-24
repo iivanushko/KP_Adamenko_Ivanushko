@@ -19,8 +19,8 @@ class OrderService
         return [
             'orders_total' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM orders'),
             'active_orders' => (int) $this->connection->fetchOne("SELECT COUNT(*) FROM orders WHERE status NOT IN ('Выполнен', 'Отменен')"),
-            'revenue' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(rental_cost), 0) FROM orders WHERE status = 'Выполнен'"),
-            'revenue_forecast' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(rental_cost), 0) FROM orders WHERE status IN ('В обработке', 'Забронирован')"),
+            'revenue' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status = 'Выполнен'"),
+            'revenue_forecast' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status IN ('В обработке', 'Забронирован')"),
             'low_stock' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM product_stock WHERE quantity <= min_quantity'),
         ];
     }
@@ -29,13 +29,15 @@ class OrderService
     {
         [$where, $params] = $this->buildOrderFilter($filters);
         $offset = max(0, ($page - 1) * $limit);
+        $limitInt = max(1, (int) $limit);
+        $offsetInt = max(0, (int) $offset);
         $orderBy = $this->buildOrdersOrderBy(
             (string) ($filters['sort'] ?? ''),
             (string) ($filters['direction'] ?? '')
         );
 
         $items = $this->connection->fetchAllAssociative(
-            "SELECT o.order_id, o.client_id, o.manager_id, o.status, o.event_date, o.rental_cost AS total_cost, o.event_type, o.prepayment_amount, o.is_fully_paid,
+            "SELECT o.order_id, o.client_id, o.manager_id, o.status, o.event_date, o.total_cost, o.event_type, o.prepayment_amount, o.is_fully_paid,
                     c.client_full_name, c.phone_number, m.manager_full_name,
                     COALESCE(string_agg(d.dish_name || ' x ' || od.serving_number, ', ' ORDER BY d.dish_name), 'Блюда не выбраны') AS dishes
              FROM orders o
@@ -46,7 +48,7 @@ class OrderService
              $where
              GROUP BY o.order_id, c.client_full_name, c.phone_number, m.manager_full_name
              ORDER BY $orderBy
-             LIMIT $limit OFFSET $offset",
+             LIMIT $limitInt OFFSET $offsetInt",
             $params
         );
 
@@ -61,7 +63,7 @@ class OrderService
     public function getOrder(int $id): ?array
     {
         $order = $this->connection->fetchAssociative(
-            'SELECT o.*, o.rental_cost AS total_cost, c.client_full_name, m.manager_full_name
+            'SELECT o.*, o.total_cost, c.client_full_name, m.manager_full_name
              FROM orders o
              JOIN client c ON c.client_id = o.client_id
              JOIN manager m ON m.manager_id = o.manager_id
@@ -270,7 +272,7 @@ class OrderService
         $column = match ($sort) {
             'client' => 'c.client_full_name',
             'manager' => 'm.manager_full_name',
-            'cost' => 'o.rental_cost',
+            'cost' => 'o.total_cost',
             'status' => 'o.status',
             'prepayment' => 'o.prepayment_amount',
             default => 'o.event_date',
@@ -379,7 +381,7 @@ class OrderService
         }
 
         $this->connection->executeStatement(
-            'UPDATE orders SET rental_cost = :total WHERE order_id = :id',
+            'UPDATE orders SET total_cost = :total WHERE order_id = :id',
             ['id' => $orderId, 'total' => $totalCost]
         );
         $this->connection->executeStatement(

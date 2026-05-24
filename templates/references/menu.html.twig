@@ -32,11 +32,22 @@
     <form id="delete-form-{{ dish.dish_id }}" method="post" action="{{ path('menu_delete', {id: dish.dish_id}) }}" onsubmit="return confirm('Удалить блюдо? Связанные рецепты и строки заказов будут затронуты правилами БД.')"></form>
   {% endfor %}
 
-  <table>
+  <table style="table-layout:fixed">
+    <colgroup>
+      <col style="width:22%"><!-- Блюдо -->
+      <col style="width:9%"> <!-- Себестоимость -->
+      <col style="width:9%"> <!-- Цена -->
+      <col style="width:8%"> <!-- Категория -->
+      <col style="width:9%"> <!-- Прибыль -->
+      <col style="width:11%"><!-- Сезонность -->
+      <col style="width:10%"><!-- Рецептура -->
+      <col style="width:6%"> <!-- В меню -->
+      <col style="width:16%"><!-- Действия -->
+    </colgroup>
     <thead>
       <tr>
         <th>Блюдо</th>
-        <th>Себестоимость</th>
+        <th>Себестоим.</th>
         <th>Цена</th>
         <th>Категория</th>
         <th>Прибыль</th>
@@ -49,14 +60,16 @@
     <tbody>
     {% for dish in result.items %}
       <tr>
-        <td>
-          <input form="dish-form-{{ dish.dish_id }}" name="dish_name" value="{{ dish.dish_name }}" maxlength="100" required>
+        <td style="overflow:hidden">
+          <input form="dish-form-{{ dish.dish_id }}" name="dish_name" value="{{ dish.dish_name }}" maxlength="100" required
+                 style="width:100%;max-width:none;min-width:0" title="{{ dish.dish_name }}">
         </td>
-        <td><input form="dish-form-{{ dish.dish_id }}" name="cost_price" type="number" min="0" step="0.01" value="{{ dish.cost_price }}" required></td>
-        <td><input form="dish-form-{{ dish.dish_id }}" name="sale_price" type="number" min="0.01" step="0.01" value="{{ dish.sale_price }}" required></td>
+        <td><input form="dish-form-{{ dish.dish_id }}" name="cost_price" type="number" min="0" step="0.01" value="{{ dish.cost_price }}" required style="width:100%;max-width:none;min-width:0"></td>
+        <td><input form="dish-form-{{ dish.dish_id }}" name="sale_price" type="number" min="0.01" step="0.01" value="{{ dish.sale_price }}" required style="width:100%;max-width:none;min-width:0"></td>
         <td>{{ dish.price_category }}</td>
         <td>{{ dish.profit|number_format(2, ',', ' ') }} руб.</td>
-        <td><input form="dish-form-{{ dish.dish_id }}" name="seasonality" value="{{ dish.seasonality }}" maxlength="50"></td>
+        <td><input form="dish-form-{{ dish.dish_id }}" name="seasonality" value="{{ dish.seasonality }}" maxlength="50"
+                   style="width:100%;max-width:none;min-width:0"></td>
         <td>
           <button class="btn secondary" type="button" onclick="openModal('recipe-{{ dish.dish_id }}')">Открыть</button>
           <span class="muted">{{ (recipes[dish.dish_id] ?? [])|length }} поз.</span>
@@ -73,7 +86,7 @@
           <div class="table-actions">
             <input form="dish-form-{{ dish.dish_id }}" type="hidden" name="is_active" value="{{ dish.is_active ? '1' : '' }}">
             <button form="dish-form-{{ dish.dish_id }}" class="btn secondary" type="submit">Сохранить</button>
-            <button class="btn secondary" type="button" onclick="openModal('edit-dish-{{ dish.dish_id }}')">Окно</button>
+            <button class="btn secondary" type="button" onclick="openModal('edit-dish-{{ dish.dish_id }}')">Редактировать</button>
             <button form="delete-form-{{ dish.dish_id }}" class="btn danger" type="submit">Удалить</button>
           </div>
         </td>
@@ -156,11 +169,14 @@
 
   <div class="pagination">
     {% if page > 1 %}
-      <a href="{{ path('menu_index', filters|merge({page: page - 1})) }}">Назад</a>
+      <a href="{{ path('menu_index', filters|merge({page: 1})) }}" title="В начало">&#171; В начало</a>
+      <a href="{{ path('menu_index', filters|merge({page: page - 1})) }}">&#8249; Назад</a>
     {% endif %}
-    <span>Страница {{ page }} из {{ result.pages }}</span>
+    <span>Стр. {{ page }} из {{ result.pages }}</span>
+    <span class="pg-info">Всего: {{ result.total }} зап.</span>
     {% if page < result.pages %}
-      <a href="{{ path('menu_index', filters|merge({page: page + 1})) }}">Вперед</a>
+      <a href="{{ path('menu_index', filters|merge({page: page + 1})) }}">Вперед &#8250;</a>
+      <a href="{{ path('menu_index', filters|merge({page: result.pages})) }}" title="В конец">В конец &#187;</a>
     {% endif %}
   </div>
 

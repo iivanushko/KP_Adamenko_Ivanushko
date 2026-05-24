@@ -77,7 +77,19 @@
           </details>
         </td>
         <td>{{ order.total_cost|number_format(2, ',', ' ') }} руб.<br>
-          {% if order.is_fully_paid %}<span class="pill ok" title="Рассчитывается автоматически по предоплате и стоимости заказа">Оплачен</span>{% else %}<span class="pill warn" title="Рассчитывается автоматически по предоплате и стоимости заказа">Ожидает оплаты</span>{% endif %}
+          {% if order.status == 'Отменен' %}
+
+            <span class="pill" title="Заказ отменён">—</span>
+
+          {% elseif order.is_fully_paid %}
+
+            <span class="pill ok" title="Рассчитывается автоматически по предоплате и стоимости заказа">Оплачен</span>
+
+          {% else %}
+
+            <span class="pill warn" title="Рассчитывается автоматически по предоплате и стоимости заказа">Ожидает оплаты</span>
+
+          {% endif %}
         </td>
         <td>
           <form class="inline-form" method="post" action="{{ path('orders_inline', {id: order.order_id}) }}">
@@ -90,11 +102,22 @@
           </form>
         </td>
         <td>
-          <form class="inline-form" method="post" action="{{ path('orders_inline', {id: order.order_id}) }}">
-            <input type="hidden" name="field" value="prepayment_amount">
-            <input name="value" type="number" min="0" step="0.01" value="{{ order.prepayment_amount }}" {% if order.status == 'Отменен' %}disabled{% endif %}>
-            <button class="btn secondary" type="submit" {% if order.status == 'Отменен' %}disabled{% endif %}>OK</button>
-          </form>
+          {% if order.status == 'Отменен' %}
+            {% if order.prepayment_amount > 0 %}
+              <span title="Сумма к возврату клиенту">
+                {{ order.prepayment_amount|number_format(2, ',', ' ') }} руб.<br>
+                <span class="pill warn" style="margin-top:4px">к возврату</span>
+              </span>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          {% else %}
+            <form class="inline-form" method="post" action="{{ path('orders_inline', {id: order.order_id}) }}">
+              <input type="hidden" name="field" value="prepayment_amount">
+              <input name="value" type="number" min="0" step="0.01" value="{{ order.prepayment_amount }}">
+              <button class="btn secondary" type="submit">OK</button>
+            </form>
+          {% endif %}
         </td>
         <td>
           <div class="table-actions">
@@ -199,11 +222,14 @@
 
   <div class="pagination">
     {% if page > 1 %}
-      <a href="{{ path('orders_index', filters|merge({page: page - 1})) }}">Назад</a>
+      <a href="{{ path('orders_index', filters|merge({page: 1})) }}" title="В начало">&#171; В начало</a>
+      <a href="{{ path('orders_index', filters|merge({page: page - 1})) }}">&#8249; Назад</a>
     {% endif %}
-    <span>Страница {{ page }} из {{ result.pages }}</span>
+    <span>Стр. {{ page }} из {{ result.pages }}</span>
+    <span class="pg-info">Всего: {{ result.total }} зап.</span>
     {% if page < result.pages %}
-      <a href="{{ path('orders_index', filters|merge({page: page + 1})) }}">Вперед</a>
+      <a href="{{ path('orders_index', filters|merge({page: page + 1})) }}">Вперед &#8250;</a>
+      <a href="{{ path('orders_index', filters|merge({page: result.pages})) }}" title="В конец">В конец &#187;</a>
     {% endif %}
   </div>
 
