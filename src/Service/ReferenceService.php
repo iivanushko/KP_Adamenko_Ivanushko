@@ -45,7 +45,8 @@ class ReferenceService
      */
     private function normalizeName(string $name): string
     {
-        return implode(' ', array_filter(array_map('trim', explode(' ', $name))));
+        $name = preg_replace('/\s+/u', ' ', $name);
+        return trim($name);
     }
 
     public function createClient(array $data): void

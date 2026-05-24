@@ -28,9 +28,18 @@ class OrderService
     {
         return [
             'orders_total' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM orders'),
-            'active_orders' => (int) $this->connection->fetchOne("SELECT COUNT(*) FROM orders WHERE status NOT IN ('" . self::STATUS_DONE . "', '" . self::STATUS_CANCELLED . "')"),
-            'revenue' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status = '" . self::STATUS_DONE . "'"),
-            'revenue_forecast' => (float) $this->connection->fetchOne("SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status IN ('" . self::STATUS_PENDING . "', '" . self::STATUS_BOOKED . "')"),
+            'active_orders' => (int) $this->connection->fetchOne(
+                "SELECT COUNT(*) FROM orders WHERE status NOT IN (:done, :cancelled)",
+                ['done' => self::STATUS_DONE, 'cancelled' => self::STATUS_CANCELLED]
+            ),
+            'revenue' => (float) $this->connection->fetchOne(
+                "SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status = :status",
+                ['status' => self::STATUS_DONE]
+            ),
+            'revenue_forecast' => (float) $this->connection->fetchOne(
+                "SELECT COALESCE(SUM(total_cost), 0) FROM orders WHERE status IN (:pending, :booked)",
+                ['pending' => self::STATUS_PENDING, 'booked' => self::STATUS_BOOKED]
+            ),
             'low_stock' => (int) $this->connection->fetchOne('SELECT COUNT(*) FROM product_stock WHERE quantity <= min_quantity'),
         ];
     }
@@ -131,22 +140,22 @@ class OrderService
         $dishes = $this->parseDishLines($data);
 
         return $this->connection->transactional(function () use ($data, $eventType, $dishes): array {
-            $row = $this->connection->fetchAssociative(
-                'CALL create_complex_order_full(:client, :manager, :event_date, :event_type, CAST(:dishes AS jsonb), NULL, NULL, NULL, NULL)',
+            $orderId = (int) $this->connection->fetchOne(
+                'INSERT INTO orders (client_id, manager_id, event_date, event_type, status, total_cost)
+                 VALUES (:client, :manager, :event_date, :event_type, :status, 0)
+                 RETURNING order_id',
                 [
                     'client' => (int) $data['client_id'],
                     'manager' => (int) $data['manager_id'],
                     'event_date' => $data['event_date'],
                     'event_type' => $eventType,
-                    'dishes' => json_encode($dishes, JSON_UNESCAPED_UNICODE),
+                    'status' => self::STATUS_PENDING,
                 ]
             );
 
-            if (!$row || ($row['p_status'] ?? 'ERROR') !== 'SUCCESS') {
-                throw new RuntimeException($row['p_message'] ?? 'Заказ не был создан.');
-            }
+            $this->replaceOrderDishes($orderId, $dishes);
 
-            return $row;
+            return ['p_status' => 'SUCCESS', 'p_message' => 'Заказ создан.', 'p_order_id' => $orderId, 'p_total_cost' => $this->connection->fetchOne('SELECT total_cost FROM orders WHERE order_id = :id', ['id' => $orderId])];
         });
     }
 
@@ -203,15 +212,17 @@ class OrderService
 
     public function inlineUpdate(int $id, string $field, string $value): void
     {
-        $allowed = ['status', 'prepayment_amount'];
-        if (!in_array($field, $allowed, true)) {
-            throw new RuntimeException('Недопустимое поле для быстрого редактирования.');
-        }
-
-        $this->connection->executeStatement("UPDATE orders SET $field = :value WHERE order_id = :id", [
-            'id' => $id,
-            'value' => $field === 'prepayment_amount' ? (float) str_replace(',', '.', $value) : $value,
-        ]);
+        match ($field) {
+            'status' => $this->connection->executeStatement(
+                "UPDATE orders SET status = :value WHERE order_id = :id",
+                ['id' => $id, 'value' => $value]
+            ),
+            'prepayment_amount' => $this->connection->executeStatement(
+                "UPDATE orders SET prepayment_amount = :value WHERE order_id = :id",
+                ['id' => $id, 'value' => (float) str_replace(',', '.', $value)]
+            ),
+            default => throw new RuntimeException('Недопустимое поле для быстрого редактирования.'),
+        };
     }
 
     public function cancelOrder(int $id): void

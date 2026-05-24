@@ -46,6 +46,10 @@ class OrderController extends AbstractController
     #[Route('/create', name: 'create', methods: ['POST'])]
     public function create(Request $request, OrderService $orders, ErrorMessageFormatter $errors): RedirectResponse
     {
+        if (!$this->isCsrfTokenValid('default', $request->request->get('_csrf_token'))) {
+            $this->addFlash('danger', 'Неверный CSRF-токен.');
+            return $this->redirectBack($request);
+        }
         try {
             $result = $orders->createComplexOrder($request->request->all());
             $this->addFlash('success', $result['p_message'].' Итог: '.number_format((float) $result['p_total_cost'], 2, ',', ' ').' руб.');

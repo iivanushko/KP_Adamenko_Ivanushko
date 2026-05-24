@@ -28,8 +28,10 @@
 
   {# Формы редактирования и удаления вынесены за пределы таблицы, чтобы браузер не ломал DOM #}
   {% for dish in result.items %}
-    <form id="dish-form-{{ dish.dish_id }}" method="post" action="{{ path('menu_edit', {id: dish.dish_id}) }}"></form>
-    <form id="delete-form-{{ dish.dish_id }}" method="post" action="{{ path('menu_delete', {id: dish.dish_id}) }}" onsubmit="return confirm('Удалить блюдо? Связанные рецепты и строки заказов будут затронуты правилами БД.')"></form>
+    <form id="dish-form-{{ dish.dish_id }}" method="post" action="{{ path('menu_edit', {id: dish.dish_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}"></form>
+    <form id="delete-form-{{ dish.dish_id }}" method="post" action="{{ path('menu_delete', {id: dish.dish_id}) }}" onsubmit="return confirm('Удалить блюдо? Связанные рецепты и строки заказов будут затронуты правилами БД.')">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}"></form>
   {% endfor %}
 
   <table style="table-layout:fixed">
@@ -76,6 +78,7 @@
         </td>
         <td>
           <form method="post" action="{{ path('menu_toggle', {id: dish.dish_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
             <label class="switch" title="Скрытое блюдо не предлагается при создании заказа">
               <input type="checkbox" name="is_active" value="1" onchange="this.form.submit()" {% if dish.is_active %}checked{% endif %}>
               <span></span>
@@ -112,7 +115,8 @@
               <tr>
                 <td>{{ row.product_name }}</td>
                 <td>
-                  <form id="recipe-form-{{ dish.dish_id }}-{{ row.product_id }}" method="post" action="{{ path('menu_recipe_save', {id: dish.dish_id}) }}"></form>
+                  <form id="recipe-form-{{ dish.dish_id }}-{{ row.product_id }}" method="post" action="{{ path('menu_recipe_save', {id: dish.dish_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}"></form>
                   <input form="recipe-form-{{ dish.dish_id }}-{{ row.product_id }}" type="hidden" name="product_id" value="{{ row.product_id }}">
                   <input form="recipe-form-{{ dish.dish_id }}-{{ row.product_id }}" name="number_in_recipe" type="number" min="0.001" step="0.001" value="{{ row.number_in_recipe }}" required>
                 </td>
@@ -120,6 +124,7 @@
                   <div class="table-actions">
                     <button form="recipe-form-{{ dish.dish_id }}-{{ row.product_id }}" class="btn secondary" type="submit">Сохранить</button>
                     <form method="post" action="{{ path('menu_recipe_delete', {dishId: dish.dish_id, productId: row.product_id}) }}" onsubmit="return confirm('Удалить продукт из рецептуры?')">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
                       <button class="btn danger" type="submit">Удалить</button>
                     </form>
                   </div>
@@ -131,6 +136,7 @@
             </tbody>
           </table>
           <form class="toolbar" method="post" action="{{ path('menu_recipe_save', {id: dish.dish_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
             <label>Продукт
               <select name="product_id" required>
                 {% for product in products %}
@@ -148,6 +154,7 @@
 
       <dialog id="edit-dish-{{ dish.dish_id }}">
         <form method="post" action="{{ path('menu_edit', {id: dish.dish_id}) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
           <div class="modal-head">
             <h2>Редактирование блюда</h2>
             <button class="btn secondary" type="button" onclick="closeModal('edit-dish-{{ dish.dish_id }}')">Закрыть</button>
@@ -182,6 +189,7 @@
 
   <dialog id="create-dish">
     <form method="post" action="{{ path('menu_create') }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('default') }}">
       <div class="modal-head">
         <h2>Новое блюдо</h2>
         <button class="btn secondary" type="button" onclick="closeModal('create-dish')">Закрыть</button>

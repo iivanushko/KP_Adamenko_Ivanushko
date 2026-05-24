@@ -209,13 +209,7 @@ SELECT so.status, m.manager_id, c.client_id, (CURRENT_DATE + so.event_offset * I
 FROM seed_orders so
 JOIN Client c ON c.client_full_name = so.client_name
 JOIN Manager m ON m.manager_full_name = so.manager_name
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM Orders o
-    WHERE o.client_id = c.client_id
-      AND o.event_date = (CURRENT_DATE + so.event_offset * INTERVAL '1 day')::DATE
-      AND o.event_type = so.event_type
-);
+ON CONFLICT (client_id, event_date) DO NOTHING;
 
 WITH seed_details(client_name, event_offset, event_type, dish_name, serving_number) AS (
     VALUES

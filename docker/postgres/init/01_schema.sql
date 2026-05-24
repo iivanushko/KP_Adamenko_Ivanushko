@@ -118,6 +118,7 @@ ALTER TABLE reserved_products ADD CONSTRAINT FK_RES_PRODUCT FOREIGN KEY (product
 CREATE INDEX idx_orders_event_date ON Orders (event_date);
 CREATE INDEX idx_orders_status     ON Orders (status);
 CREATE INDEX idx_orders_client_id  ON Orders (client_id);
+CREATE UNIQUE INDEX idx_orders_client_date ON Orders (client_id, event_date);
 
 CREATE OR REPLACE FUNCTION log_operation(p_operation_type VARCHAR, p_table_name VARCHAR, p_record_id INT, p_description TEXT)
 RETURNS VOID AS $$
