@@ -853,12 +853,39 @@ dialog::backdrop { background: rgba(10,20,40,.55); backdrop-filter: blur(4px); }
   .toolbar label { min-width: calc(50% - 4px); }
   .toolbar .btn  { align-self: flex-end; }
 
-  /* Tables — horizontal scroll with sticky first col on small screens */
-  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  table { display: block; overflow-x: auto; white-space: nowrap; min-width: 500px; }
+  /* Tables — horizontal scroll */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--r-md);
+  }
+
+  /* Tables stay as normal tables but can scroll inside .table-wrap */
+  table {
+    min-width: 480px;   /* ensure scroll kicks in before content crushes */
+    white-space: normal; /* allow text to wrap within cells */
+  }
+
+  /* Orders table is very wide — needs more room */
+  #orders-table, .orders-wide {
+    min-width: 780px;
+  }
+
+  /* Allow client name and dish name to wrap gracefully */
+  td {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  /* Input fields in table cells should not overflow */
+  td input[type="text"], td input:not([type]), td input[type="number"] {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
 
   /* Reduce button sizes on mobile */
-  .btn { padding: 8px 12px; font-size: 13px; }
+  .btn { padding: 0 12px; height: 36px; min-height: 36px; font-size: 13px; }
 
   /* Pagination wraps */
   .pagination { gap: 4px; }
@@ -878,7 +905,7 @@ dialog::backdrop { background: rgba(10,20,40,.55); backdrop-filter: blur(4px); }
   /* Modal full-width on small screens */
   dialog {
     width: calc(100vw - 16px);
-    max-height: 90vh;
+    max-height: 92vh;
     overflow-y: auto;
   }
 
