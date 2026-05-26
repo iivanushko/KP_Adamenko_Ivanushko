@@ -72,7 +72,7 @@ img { max-width: 100%; display: block; }
 ======================================== */
 .layout {
   display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr); /* minmax(0, 1fr) принудительно ограничивает колонку шириной экрана */
   min-height: 100vh;
 }
 
@@ -461,13 +461,24 @@ input[type="checkbox"] { min-height: auto; width: 16px; height: 16px; accent-col
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  overflow-x: auto;                  /* Разрешаем горизонтальную прокрутку при необходимости */
+  -webkit-overflow-scrolling: touch; /* Плавный скролл для мобильных устройств iOS */
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
   background: var(--panel);
+  min-width: max-content;            /* Предотвращает сильное сжатие колонок внутри контейнера */
+}
+
+/* Задаем комфортную минимальную ширину для сложных и насыщенных таблиц */
+#orders-table {
+  min-width: 1150px; /* Гарантирует свободное отображение дат, блюд, инпутов предоплаты и всех кнопок */
+}
+
+#menu-table {
+  min-width: 1000px; /* Дает достаточно места для названий блюд, рецептур и переключателей */
 }
 
 .table-wrap table { border-radius: 0; border: 0; box-shadow: none; }
@@ -515,7 +526,6 @@ td input:not([type="checkbox"]) {
 
 td input[name="client_full_name"] { max-width: none; }
 td input[name="dish_name"] { max-width: 180px; }
-td input[name="seasonality"] { max-width: 110px; }
 td:last-child { white-space: nowrap; }
 
 /* ========================================
@@ -871,18 +881,30 @@ dialog::backdrop { background: rgba(10,20,40,.55); backdrop-filter: blur(4px); }
     min-width: 780px;
   }
 
-  /* Allow client name and dish name to wrap gracefully */
-  td {
-    word-break: break-word;
-    overflow-wrap: break-word;
-  }
+/* Allow client name and dish name to wrap gracefully */
+td {
+  word-break: normal;        /* Запрещает разрывать цельные слова посреди букв */
+  overflow-wrap: break-word; /* Переносит длинные фразы на новую строку только по границам слов */
+}
 
   /* Input fields in table cells should not overflow */
-  td input[type="text"], td input:not([type]), td input[type="number"] {
-    max-width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-  }
+ /* Input fields in table cells should not overflow */
+td input[type="text"], td input:not([type]), td input[type="number"] {
+  max-width: 100%;
+  min-width: 90px; /* Минимальный базовый размер для числовых полей */
+  box-sizing: border-box;
+}
+
+/* Устанавливаем комфортные размеры для текстовых полей ввода конкретных типов данных */
+td input[name="client_full_name"] {
+  min-width: 180px !important; /* Поле ФИО клиента не сожмется меньше 180px */
+}
+td input[name="phone_number"] {
+  min-width: 130px !important; /* Поле телефона не сожмется меньше 130px */
+}
+td input[name="dish_name"] {
+  min-width: 180px !important; /* Поле названия блюда */
+}
 
   /* Reduce button sizes on mobile */
   .btn { padding: 0 12px; height: 36px; min-height: 36px; font-size: 13px; }
@@ -958,4 +980,15 @@ dialog::backdrop { background: rgba(10,20,40,.55); backdrop-filter: blur(4px); }
   .sidebar, .hamburger, .mobile-header, .topline .btn { display: none !important; }
   .layout { grid-template-columns: 1fr; }
   main { padding: 0; }
+}
+
+/* Индивидуальная комфортная ширина колонок в таблице заказов */
+#orders-table td:nth-child(2) {
+  min-width: 180px; /* Колонка с именем клиента */
+}
+#orders-table td:nth-child(3) {
+  min-width: 150px; /* Колонка менеджера */
+}
+#orders-table td:nth-child(4) {
+  min-width: 280px; /* Колонка списка блюд ( summary ) */
 }

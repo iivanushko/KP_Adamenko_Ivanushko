@@ -86,7 +86,8 @@
         'UPDATE_STATUS': 'Смена статуса',
         'UPDATE_DISHES': 'Состав заказа',
         'DELETE':        'Удаление',
-        'CLOSE_RESERVE': 'Возврат резерва',
+        'CLOSE_RESERVE': 'Закрытие резерва',
+        'CANCEL':        'Отмена заказа',
         'NOTIFICATION':  'Уведомление',
         'SEED':          'Демо-данные'
       } %}
@@ -94,7 +95,7 @@
         <table style="table-layout:fixed">
           <colgroup>
             <col style="width:130px">
-            <col style="width:110px">
+            <col style="width:125px">
             <col>
           </colgroup>
           <thead>
@@ -103,7 +104,8 @@
           <tbody>
           {% for log in logs %}
             <tr>
-              <td style="font-size:12px;color:var(--muted)">{{ log.operation_date }}</td>
+              {# Применяем красивый формат даты и времени #}
+              <td style="font-size:12px;color:var(--muted)">{{ log.operation_date|date('d.m.Y H:i') }}</td>
               <td><span class="pill">{{ op_labels[log.operation_type] ?? log.operation_type }}</span></td>
               <td title="{{ log.description }}" style="word-break:break-word;white-space:normal;font-size:13px">{{ log.description }}</td>
             </tr>

@@ -3,6 +3,17 @@
 {% block title %}История заказа #{{ order_id }}{% endblock %}
 
 {% block body %}
+{% set op_labels = {
+    'CREATE':        'Создание',
+    'UPDATE':        'Обновление',
+    'UPDATE_STATUS': 'Смена статуса',
+    'UPDATE_DISHES': 'Состав заказа',
+    'DELETE':        'Удаление',
+    'CLOSE_RESERVE': 'Закрытие резерва',
+    'CANCEL':        'Отмена заказа',
+    'NOTIFICATION':  'Уведомление',
+    'SEED':          'Демо-данные'
+} %}
   <div class="topline">
     <div>
       <h1>История заказа #{{ order_id }}</h1>
@@ -24,7 +35,7 @@
         {% for log in logs %}
           <tr>
             <td>{{ log.operation_date }}</td>
-            <td><span class="pill warn">{{ log.operation_type }}</span></td>
+            <td><span class="pill warn">{{ op_labels[log.operation_type] ?? log.operation_type }}</span></td>
             <td>{{ log.description }}</td>
           </tr>
         {% else %}

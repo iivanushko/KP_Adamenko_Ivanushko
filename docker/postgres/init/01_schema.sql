@@ -18,7 +18,6 @@ CREATE TABLE Dish (
     cost_price NUMERIC(10,2) NOT NULL,
     sale_price NUMERIC(10,2) NOT NULL,
     price_category VARCHAR(20),
-    seasonality VARCHAR(50) DEFAULT 'Всесезонное',
     is_active BOOLEAN DEFAULT TRUE
 );
 
@@ -293,7 +292,8 @@ CREATE OR REPLACE PROCEDURE create_complex_order_full(
     IN p_dishes JSONB,
     OUT p_order_id INT,
     OUT p_total_cost NUMERIC,
-    OUT p_status VARCHAR(20),
+    OUT p_status VARCHAR(20),
+
     OUT p_message TEXT
 )
 LANGUAGE plpgsql AS $$
@@ -385,8 +385,8 @@ INSERT INTO product_stock (product_id, quantity, min_quantity, last_restock_date
 SELECT product_id, 100, 10, CURRENT_DATE FROM Product;
 
 INSERT INTO Dish (dish_name, cost_price, sale_price, seasonality) VALUES
-('Салат Цезарь', 180.50, 450.00, 'Лето'),
-('Стейк из говядины', 350.25, 890.00, 'Всесезонное');
+('Салат Цезарь', 180.50, 450.00),
+('Стейк из говядины', 350.25, 890.00);
 
 INSERT INTO Recipe (product_id, dish_id, number_in_recipe) VALUES
 (1, 1, 0.2), (3, 1, 0.15), (4, 1, 0.05), (5, 1, 0.03),
