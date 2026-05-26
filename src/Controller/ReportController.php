@@ -195,6 +195,7 @@ class ReportController extends AbstractController
         $sheet->fromArray(['Итого', '', '', '', '', (float) $report['total_revenue'], (float) $report['total_prepayment'], 'К оплате: '.number_format((float) ($report['total_revenue'] - $report['total_prepayment']), 2, ',', ' ')], null, 'A'.$rowNumber);
         $sheet->getStyle('A'.$rowNumber.':H'.$rowNumber)->getFont()->setBold(true);
 
+        // Вспомогательная таблица с данными по типам мероприятий в колонках J и K сохраняется
         $sheet->fromArray(['Тип мероприятия', 'Выручка'], null, 'J1');
         $chartRow = 2;
         foreach ($report['by_type'] as $row) {
@@ -210,7 +211,7 @@ class ReportController extends AbstractController
 
         return new StreamedResponse(static function () use ($spreadsheet): void {
             $writer = new Xlsx($spreadsheet);
-            $writer->setIncludeCharts(true);
+            $writer->setIncludeCharts(true); // Отключаем рендеринг диаграмм в итоговом файле Excel
             $writer->save('php://output');
         }, 200, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

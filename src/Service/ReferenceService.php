@@ -95,10 +95,6 @@ class ReferenceService
             $params['active'] = $filters['active'] === '1';
             $types['active'] = ParameterType::BOOLEAN;
         }
-        if (($filters['seasonality'] ?? '') !== '') {
-            $where[] = 'seasonality = :seasonality';
-            $params['seasonality'] = $filters['seasonality'];
-        }
 
         $whereSql = $where === [] ? '' : 'WHERE '.implode(' AND ', $where);
         $offset = max(0, ($page - 1) * $limit);
@@ -106,7 +102,7 @@ class ReferenceService
         $offsetInt = max(0, (int) $offset);
 
         $items = $this->connection->fetchAllAssociative(
-            "SELECT dish_id, dish_name, cost_price, sale_price, price_category, (sale_price - cost_price) AS profit, seasonality, is_active
+            "SELECT dish_id, dish_name, cost_price, sale_price, price_category, (sale_price - cost_price) AS profit, is_active
              FROM dish
              $whereSql
              ORDER BY is_active DESC, dish_name
@@ -123,8 +119,8 @@ class ReferenceService
     {
         $this->requireText($data['dish_name'] ?? '', 'Укажите название блюда.');
         $id = (int) $this->connection->fetchOne(
-            'INSERT INTO dish (dish_name, cost_price, sale_price, seasonality, is_active)
-             VALUES (:name, :cost, :sale, :seasonality, :active)
+            'INSERT INTO dish (dish_name, cost_price, sale_price, is_active)
+             VALUES (:name, :cost, :sale, :active)
              RETURNING dish_id',
             $this->dishParams($data),
             ['active' => ParameterType::BOOLEAN]
@@ -139,11 +135,12 @@ class ReferenceService
 
         $this->connection->executeStatement(
             'UPDATE dish
-             SET dish_name = :name, cost_price = :cost, sale_price = :sale, seasonality = :seasonality, is_active = :active
+             SET dish_name = :name, cost_price = :cost, sale_price = :sale, is_active = :active
              WHERE dish_id = :id',
             $params,
             ['active' => ParameterType::BOOLEAN]
         );
+
         $this->log('UPDATE', 'Dish', $id, 'Обновлено блюдо из интерфейса');
     }
 
@@ -345,7 +342,6 @@ class ReferenceService
             'name' => trim((string) $data['dish_name']),
             'cost' => $cost,
             'sale' => $sale,
-            'seasonality' => trim((string) ($data['seasonality'] ?? 'Всесезонное')) ?: 'Всесезонное',
             'active' => !empty($data['is_active']),
         ];
     }

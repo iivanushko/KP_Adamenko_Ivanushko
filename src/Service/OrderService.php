@@ -243,7 +243,7 @@ class OrderService
     public function activeDishes(): array
     {
         return $this->connection->fetchAllAssociative(
-            'SELECT dish_id, dish_name, sale_price, price_category, seasonality FROM dish WHERE is_active = TRUE ORDER BY dish_name'
+            'SELECT dish_id, dish_name, sale_price, price_category FROM dish WHERE is_active = TRUE ORDER BY dish_name'
         );
     }
 
@@ -361,7 +361,15 @@ class OrderService
             );
 
             $totalCost += (float) $dishRow['sale_price'] * (float) $dish['quantity'];
-            foreach ($this->connection->fetchAllAssociative('SELECT product_id, number_in_recipe FROM recipe WHERE dish_id = :id', ['id' => $dish['dish_id']]) as $recipe) {
+
+            // Вложенный цикл по рецепту (содержит JOIN для получения названия продукта)
+            foreach ($this->connection->fetchAllAssociative(
+                'SELECT r.product_id, r.number_in_recipe, p.product_name 
+                 FROM recipe r 
+                 JOIN product p ON p.product_id = r.product_id 
+                 WHERE r.dish_id = :id', 
+                ['id' => $dish['dish_id']]
+            ) as $recipe) {
                 $requiredQuantity = (float) $recipe['number_in_recipe'] * (float) $dish['quantity'];
                 $availableQuantity = $this->connection->fetchOne(
                     'SELECT quantity FROM product_stock WHERE product_id = :id FOR UPDATE',
@@ -370,8 +378,8 @@ class OrderService
                 $availableQuantity = $availableQuantity === false ? 0.0 : (float) $availableQuantity;
                 if ($availableQuantity < $requiredQuantity) {
                     throw new RuntimeException(sprintf(
-                        'Недостаточно продукта (ID: %d) на складе! Нужно: %.3f, доступно: %.3f',
-                        (int) $recipe['product_id'],
+                        'Недостаточно продукта "%s" на складе! Нужно: %.3f, доступно: %.3f',
+                        $recipe['product_name'],
                         $requiredQuantity,
                         $availableQuantity
                     ));
@@ -386,8 +394,8 @@ class OrderService
                      VALUES (:order, :product, :quantity)',
                     ['order' => $orderId, 'product' => (int) $recipe['product_id'], 'quantity' => $requiredQuantity]
                 );
-            }
-        }
+            } // Конец цикла рецепта (закрывает внутренний foreach)
+        } // Конец цикла блюд (закрывает внешний foreach)
 
         $this->connection->executeStatement(
             'UPDATE orders SET total_cost = :total WHERE order_id = :id',

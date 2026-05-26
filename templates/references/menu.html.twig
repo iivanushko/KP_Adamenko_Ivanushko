@@ -43,7 +43,6 @@
         <th data-col="2" class="sort-th" style="width:80px">Цена <span class="sort-icon">⇕</span></th>
         <th data-col="3" class="sort-th" style="width:90px">Категория <span class="sort-icon">⇕</span></th>
         <th data-col="4" class="sort-th" style="width:100px">Прибыль <span class="sort-icon">⇕</span></th>
-        <th data-col="5" class="sort-th" style="width:100px">Сезонн. <span class="sort-icon">⇕</span></th>
         <th style="width:100px">Рецептура</th>
         <th style="width:60px">В меню</th>
         <th style="width:180px">Действия</th>
@@ -60,7 +59,6 @@
         <td data-val="{{ dish.sale_price }}"><input form="dish-form-{{ dish.dish_id }}" name="sale_price" type="number" min="0.01" step="0.01" value="{{ dish.sale_price }}" required style="width:75px"></td>
         <td data-val="{{ dish.price_category }}">{{ dish.price_category }}</td>
         <td data-val="{{ dish.profit }}">{{ dish.profit|number_format(0, ',', ' ') }} р.</td>
-        <td data-val="{{ dish.seasonality }}"><input form="dish-form-{{ dish.dish_id }}" name="seasonality" value="{{ dish.seasonality }}" maxlength="50" style="width:90px"></td>
         <td>
           <button class="btn secondary" type="button" onclick="openModal('recipe-{{ dish.dish_id }}')"
                   style="padding:0 8px;font-size:12px">Открыть</button>
@@ -155,7 +153,6 @@
           </div>
           <div class="modal-body form-grid">
             <label>Название <input name="dish_name" value="{{ dish.dish_name }}" maxlength="100" required></label>
-            <label>Сезонность <input name="seasonality" value="{{ dish.seasonality }}" maxlength="50"></label>
             <label>Себестоимость <input name="cost_price" type="number" min="0" step="0.01" value="{{ dish.cost_price }}" required></label>
             <label>Цена продажи <input name="sale_price" type="number" min="0.01" step="0.01" value="{{ dish.sale_price }}" required></label>
             <label class="checkline wide"><input type="checkbox" name="is_active" value="1" {% if dish.is_active %}checked{% endif %}> Показывать блюдо при создании заказа</label>
@@ -190,7 +187,6 @@
       </div>
       <div class="modal-body form-grid">
         <label>Название <input name="dish_name" maxlength="100" required></label>
-        <label>Сезонность <input name="seasonality" maxlength="50" value="Всесезонное"></label>
         <label>Себестоимость <input name="cost_price" type="number" min="0" step="0.01" required></label>
         <label>Цена продажи <input name="sale_price" type="number" min="0.01" step="0.01" required></label>
         <label class="checkline wide"><input type="checkbox" name="is_active" value="1" checked> Показывать блюдо при создании заказа</label>
